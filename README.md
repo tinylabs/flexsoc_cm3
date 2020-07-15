@@ -3,7 +3,7 @@ flexsoc_cm3 is a flexible system on chip emulator for the ARM Cortex-M3. The goa
 
 ## Architecture
 To maintain maximum flexibility there are a few building blocks which comprise flexsoc_cm3. Here is a high level block diagram.
-![bd](images/flexsoc_cm3.png)
+![bd](.images/flexsoc_cm3.png)
 On the host side you specify a system map file which sets up mapping such as:
 * Remap the ROM (0x0800.0000 for STM32)
 * Map any target peripherals to expected location

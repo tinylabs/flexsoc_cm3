@@ -1,0 +1,39 @@
+/**
+ *  flexsoc communication library. Send/receive commands to flexsoc using 
+ *  various transport layers.
+ *
+ *  All rights reserved.
+ *  Tiny Labs Inc.
+ *  2020
+ */
+#ifndef FLEXSOC_H
+#define FLEXSOC_H
+
+#include <stdint.h>
+
+// Callback for slave interface
+typedef void (*recv_cb_t) (uint8_t *buf, int len);
+
+// Open/close flexsoc
+int flexsoc_open (char *id, recv_cb_t recv_cb);
+void flexsoc_close (void);
+
+//
+// Raw interface - send/receive bytes
+//
+// Read/write through flexsoc master interface
+int flexsoc_send_resp (const char *wbuf, int wlen, char *rbuf, int rlen);
+
+// Send plugin response
+// Only use from the plugin framework
+void flexsoc_send (const char *wbuf, int wlen);
+
+// Master read/write interface
+int flexsoc_readw (uint32_t addr, uint32_t *data, int len);
+int flexsoc_readh (uint32_t addr, uint16_t *data, int len);
+int flexsoc_readb (uint32_t addr, uint8_t  *data, int len);
+int flexsoc_writew (uint32_t addr, uint32_t *data, int len);
+int flexsoc_writeh (uint32_t addr, uint16_t *data, int len);
+int flexsoc_writeb (uint32_t addr, uint8_t  *data, int len);
+
+#endif /* FLEXSOC_H */
