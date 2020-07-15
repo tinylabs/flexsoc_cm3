@@ -19,7 +19,7 @@ On the host side you specify a system map file which sets up mapping such as:
     0x0000.0000 - ROM (Can be remapped)
     0x2000.0000 - RAM
     0xE000.0000 - Private peripheral bus (only accessible by CM3 code)
-    0xF000.0000 - flexsoc_cm3 CSR (control/status registers) - Only visible to host
+    0xE000.0000 - flexsoc_cm3 CSR (control/status registers) - Only visible to host
 Any bus transaction that doesn't match a slave will be forwarded to the host. This creates a lot of flexibility. For instance, a host plugin can log all peripheral accesses and then pass them on to the real target using the target bridge. Or a particular peripheral can instantiated using a virtual peripheral plugin and handled directly on the host.
 
 ## Hardware
