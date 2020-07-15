@@ -123,7 +123,7 @@ static void *flexsoc_listen (void *arg)
         read += rv;
       }
     }
-    
+
     // Master response
     if ((buf[0] & 0x80) == 0x80) {
 
@@ -135,6 +135,8 @@ static void *flexsoc_listen (void *arg)
     }
     // Pass to callback if registered
     else if (recv_cb) {
+      // Debug dump
+      //dump ("<=", (uint8_t *)buf, cnt + 1);
       recv_cb ((uint8_t *)buf, cnt + 1);
     }
   }
@@ -332,17 +334,17 @@ int flexsoc_readb (uint32_t addr, uint8_t *data, int len)
   return flexsoc_read (1, addr, (uint8_t *)data, len);
 }
 
-int flexsoc_writew (uint32_t addr, const uint32_t *data, int len)
+int flexsoc_writew (uint32_t addr, uint32_t *data, int len)
 {
   return flexsoc_write (4, addr, (const uint8_t *)data, len);
 }
 
-int flexsoc_writeh (uint32_t addr, const uint16_t *data, int len)
+int flexsoc_writeh (uint32_t addr, uint16_t *data, int len)
 {
   return flexsoc_write (2, addr, (const uint8_t *)data, len);
 }
 
-int flexsoc_writeb (uint32_t addr, const uint8_t *data, int len)
+int flexsoc_writeb (uint32_t addr, uint8_t *data, int len)
 {
   return flexsoc_write (1, addr, (const uint8_t *)data, len);
 }

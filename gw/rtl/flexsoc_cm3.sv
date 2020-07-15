@@ -162,12 +162,12 @@ module flexsoc_cm3
                      .DATA_WIDTH   (8))
    u_tx_fifo (
               .wr_clk_i   (CLK),
-              .wr_rst_i   (PORESETn),
+              .rd_clk_i   (TRANSPORT_CLK),
+              .rd_rst_i   (~PORESETn),
+              .wr_rst_i   (~PORESETn),
               .wr_en_i    (host_WREN),
               .wr_data_i  (host_WRDATA),
               .full_o     (host_WRFULL),
-              .rd_clk_i   (TRANSPORT_CLK),
-              .rd_rst_i   (PORESETn),
               .rd_en_i    (trans_RDEN),
               .rd_data_o  (trans_RDDATA),
               .empty_o    (trans_RDEMPTY)
@@ -179,12 +179,12 @@ module flexsoc_cm3
                      .DATA_WIDTH   (8))
    u_rx_fifo (
               .rd_clk_i   (CLK),
-              .rd_rst_i   (PORESETn),
+              .wr_clk_i   (TRANSPORT_CLK),
+              .rd_rst_i   (~PORESETn),
+              .wr_rst_i   (~PORESETn),
               .rd_en_i    (host_RDEN),
               .rd_data_o  (host_RDDATA),
               .empty_o    (host_RDEMPTY),
-              .wr_clk_i   (TRANSPORT_CLK),
-              .wr_rst_i   (PORESETn),
               .wr_en_i    (trans_WREN),
               .wr_data_i  (trans_WRDATA),
               .full_o     (trans_WRFULL)
@@ -195,10 +195,12 @@ module flexsoc_cm3
                     .FREQ (TRANSPORT_FREQ),
                     .BAUD (TRANSPORT_BAUD))
    u_transport (
-                .CLK        (CLK),
+                .CLK        (TRANSPORT_CLK),
                 .RESETn     (PORESETn),
+                // UART interface
                 .TX_PIN     (UART_TX),
                 .RX_PIN     (UART_RX),
+                // FIFO interface
                 .FIFO_WREN  (trans_WREN),
                 .FIFO_FULL  (trans_WRFULL),
                 .FIFO_DOUT  (trans_WRDATA),

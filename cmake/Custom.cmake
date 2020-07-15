@@ -86,13 +86,12 @@ else( NOT CROSSCOMPILING )
   endmacro( test_finalize )
   
   # Create test
-  function( host_test NAME SOURCES)
+  function( hw_test NAME SOURCES)
     add_executable( ${NAME} ${SOURCES} ${ARGN} )
-    target_link_libraries( ${NAME} flexsoc )
+    target_link_libraries( ${NAME} flexsoc test )
     add_test(
       NAME ${NAME}
-      COMMAND ${NAME} ${FLEXSOC_HW} )
-    
-  endfunction( host_test )
+      COMMAND ${PROJECT_SOURCE_DIR}/test/scripts/hw_test.sh ${VERILATOR_SIM} $<TARGET_FILE:${NAME}> ${FLEXSOC_HW} )    
+  endfunction( hw_test )
   
 endif()
