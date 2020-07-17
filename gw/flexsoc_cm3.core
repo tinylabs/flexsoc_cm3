@@ -9,6 +9,7 @@ filesets:
             - ahb3lite_memory
             - ahb3lite_host_master
             - ahb3lite_default_slave
+            - ahb3lite_csr
             - fifo
             - uart_transport
         files:
@@ -25,6 +26,10 @@ filesets:
     ahb3lite_intercon_dep:
         depend:
             - ahb3lite_intercon
+
+    ahb3lite_csr_dep:
+        depend:
+            - ahb3lite_csr
             
     verilator_tb:
         depend:
@@ -42,8 +47,21 @@ filesets:
             - vivado/clocks.xdc : {file_type : xdc}
             - vivado/pins.xdc   : {file_type : xdc}
             - vivado/vivado.tcl : {file_type : tclSource}
-            
+
 generate:
+    flexsoc_csr:
+        generator: ahb3lite_csr_gen
+        parameters:
+            instance: ahb3_csr
+            address: 0xe0000000
+            registers:
+                flexsoc_id:
+                    width: 32
+                    type: ro
+                slave_en:
+                    width: 1
+                    type: rw
+                    
     soc_intercon:
         generator: ahb3lite_intercon_gen
         parameters:
@@ -61,6 +79,9 @@ generate:
                 ahb3_ram:
                     offset: 0x20000000
                     size:   16384
+                ahb3_csr:
+                    offset: 0xE0000000
+                    size:   16
                 ahb3_default_slave:
                     idx:    3 # Force last slave
                     offset: 0
@@ -68,8 +89,8 @@ generate:
 
 targets:
     default: &base
-        generate: [soc_intercon]
-        filesets: [ahb3lite_intercon_dep, rtl, support]
+        generate: [flexsoc_csr, soc_intercon]
+        filesets: [ahb3lite_csr_dep, ahb3lite_intercon_dep, rtl, support]
         parameters: [XILINX_ENC_CM3=0,ROM_SZ,RAM_SZ,TRANSPORT_FREQ,TRANSPORT_BAUD]
 
     sim:

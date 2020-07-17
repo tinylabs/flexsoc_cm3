@@ -14,6 +14,8 @@
 #include "flexsoc.h"
 #include "err.h"
 
+#define DEBUG   1
+
 // Local variables
 static Transport *dev = NULL;
 static pthread_t tid;
@@ -135,8 +137,7 @@ static void *flexsoc_listen (void *arg)
     }
     // Pass to callback if registered
     else if (recv_cb) {
-      // Debug dump
-      //dump ("<=", (uint8_t *)buf, cnt + 1);
+      if (DEBUG) dump ("<=", (uint8_t *)buf, cnt + 1);
       recv_cb ((uint8_t *)buf, cnt + 1);
     }
   }
@@ -203,7 +204,7 @@ int flexsoc_send_resp (const char *wbuf, int wlen, char *rbuf, int rlen)
   
   // Save num bytes/buffer
   exp_buf = rbuf;
-  //dump ("=>", (uint8_t *)wbuf, wlen);
+  if (DEBUG) dump ("=>", (uint8_t *)wbuf, wlen);
   
   // Write to device
   rv = dev->Write (wbuf, wlen);
@@ -213,7 +214,7 @@ int flexsoc_send_resp (const char *wbuf, int wlen, char *rbuf, int rlen)
   // Block until response received
   if (rbuf && rlen)
     pthread_mutex_lock (&resplock);
-  //dump ("<=", (uint8_t *)rbuf, rlen);
+  if (DEBUG) dump ("<=", (uint8_t *)rbuf, rlen);
   
   // Release master lock
   pthread_mutex_unlock (&mlock);

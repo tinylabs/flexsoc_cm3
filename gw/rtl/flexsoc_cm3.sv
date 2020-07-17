@@ -39,11 +39,22 @@ module flexsoc_cm3
 
    // Include generated AHB3lite interconnect crossbar
 `include "ahb3lite_intercon.vh"
+
+   // Include autgen config/status registers
+`include "flexsoc_csr.vh"
    
    // IRQs to cm3 core
    logic [15:0] irq;   
    assign irq = {16'h0};
 
+   // Assign registers
+   always @(posedge CLK)
+     begin
+        flexsoc_id <= 32'hdeadd00d;
+        slave_en_i <= slave_en_o;
+     end
+  
+   
    // CPU reset controller
    logic        cpureset_n, sysresetreq;
    logic [3:0]  cpureset_ctr;
@@ -107,7 +118,6 @@ module flexsoc_cm3
                 .HRESP     (ahb3_ram_HRESP)
                 );
 
-
    // Default slave to handle bad requests
    ahb3lite_default_slave
      u_dslave (
@@ -128,7 +138,6 @@ module flexsoc_cm3
    // FIFO <=> Transport
    wire trans_RDEN, trans_WREN, trans_WRFULL, trans_RDEMPTY;
    wire [7:0] trans_RDDATA, trans_WRDATA;
-
 
    // Host AHB3 master
    assign ahb3_host_master_HSEL = 1'b1;
