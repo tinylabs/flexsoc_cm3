@@ -50,8 +50,18 @@ module flexsoc_cm3
    // Assign registers
    always @(posedge CLK)
      begin
-        flexsoc_id <= 32'hdeadd00d;
-        slave_en_i <= slave_en_o;
+        // Register reset values
+        if (~PORESETn)
+          begin
+             cpu_reset_i <= 1;
+          end
+        // Otherwise drive input with output
+        else
+          begin
+             flexsoc_id <= 32'hdeadd00d;
+             slave_en_i <= slave_en_o;
+             cpu_reset_i <= cpu_reset_o;
+          end
      end
   
    
@@ -118,26 +128,9 @@ module flexsoc_cm3
                 .HRESP     (ahb3_ram_HRESP)
                 );
 
-   // Default slave to handle bad requests
-   ahb3lite_default_slave
-     u_dslave (
-               .CLK       (CLK),
-               .RESETn    (PORESETn),
-               .HSEL      (ahb3_default_slave_HSEL),
-               .HTRANS    (ahb3_default_slave_HTRANS),
-               .HREADY    (ahb3_default_slave_HREADY),
-               .HREADYOUT (ahb3_default_slave_HREADYOUT),
-               .HRESP     (ahb3_default_slave_HRESP),
-               .HRDATA    (ahb3_default_slave_HRDATA)
-               );
-
-   // Connection to host
-   wire host_RDEN, host_WREN, host_WRFULL, host_RDEMPTY;
-   wire [7:0] host_RDDATA, host_WRDATA;
-
-   // FIFO <=> Transport
-   wire trans_RDEN, trans_WREN, trans_WRFULL, trans_RDEMPTY;
-   wire [7:0] trans_RDDATA, trans_WRDATA;
+   // Master <=> arbiter
+   wire master_RDEN, master_WREN, master_WRFULL, master_RDEMPTY;
+   wire [7:0] master_RDDATA, master_WRDATA;
 
    // Host AHB3 master
    assign ahb3_host_master_HSEL = 1'b1;
@@ -157,15 +150,84 @@ module flexsoc_cm3
                     .HRDATA    (ahb3_host_master_HRDATA),
                     .HRESP     (ahb3_host_master_HRESP),
                     .HREADY    (ahb3_host_master_HREADY),
-                    .RDEN      (host_RDEN),
-                    .RDEMPTY   (host_RDEMPTY),
-                    .RDDATA    (host_RDDATA),
-                    .WREN      (host_WREN),
-                    .WRFULL    (host_WRFULL),
-                    .WRDATA    (host_WRDATA)
+                    .RDEN      (master_RDEN),
+                    .RDEMPTY   (master_RDEMPTY),
+                    .RDDATA    (master_RDDATA),
+                    .WREN      (master_WREN),
+                    .WRFULL    (master_WRFULL),
+                    .WRDATA    (master_WRDATA)
                     );
 
-   // Host => Transport
+   // Slave <=> arbiter
+   wire slave_RDEN, slave_WREN, slave_WRFULL, slave_RDEMPTY;
+   wire [7:0] slave_RDDATA, slave_WRDATA;
+
+   // Shuttle unmatched bus transactions to host
+   ahb3lite_host_slave
+     u_host_slave (
+                   .CLK       (CLK),
+                   .RESETn    (PORESETn),
+                   .EN        (slave_en_o),
+                   .HSEL      (ahb3_host_slave_HSEL),
+                   .HADDR     (ahb3_host_slave_HADDR),
+                   .HWDATA    (ahb3_host_slave_HWDATA),
+                   .HTRANS    (ahb3_host_slave_HTRANS),
+                   .HSIZE     (ahb3_host_slave_HSIZE),
+                   .HBURST    (ahb3_host_slave_HBURST),
+                   .HPROT     (ahb3_host_slave_HPROT),
+                   .HWRITE    (ahb3_host_slave_HWRITE),
+                   .HRDATA    (ahb3_host_slave_HRDATA),
+                   .HRESP     (ahb3_host_slave_HRESP),
+                   .HREADY    (ahb3_host_slave_HREADY),
+                   .HREADYOUT (ahb3_host_slave_HREADYOUT),
+                   .RDEN      (slave_RDEN),
+                   .RDEMPTY   (slave_RDEMPTY),
+                   .WREN      (slave_WREN),
+                   .WRFULL    (slave_WRFULL),
+                   .RDDATA    (slave_RDDATA),
+                   .WRDATA    (slave_WRDATA)
+                   );
+
+   // ARB <=> FIFO
+   wire arb_RDEN, arb_WREN, arb_WRFULL, arb_RDEMPTY;
+   wire [7:0] arb_RDDATA, arb_WRDATA;
+
+   // FIFO <=> Transport
+   wire trans_RDEN, trans_WREN, trans_WRFULL, trans_RDEMPTY;
+   wire [7:0] trans_RDDATA, trans_WRDATA;
+
+   // Create fifo arbiter to share connection with host
+   fifo_arb #(
+              .AW  (3),
+              .DW  (8))
+   u_fifo_arb (
+               .CLK          (CLK),
+               .RESETn       (PORESETn),
+               // Connect to dual clock transport fifo
+               .com_rden     (arb_RDEN),
+               .com_rdempty  (arb_RDEMPTY),
+               .com_rddata   (arb_RDDATA),
+               .com_wren     (arb_WREN),
+               .com_wrfull   (arb_WRFULL),
+               .com_wrdata   (arb_WRDATA),
+               // Connect to host_master (selmask matches)
+               .c1_rden      (master_RDEN),
+               .c1_rdempty   (master_RDEMPTY),
+               .c1_rddata    (master_RDDATA),
+               .c1_wren      (master_WREN),
+               .c1_wrfull    (master_WRFULL),
+               .c1_wrdata    (master_WRDATA),
+               // Connect to host_slave
+               .c2_rden      (slave_RDEN),
+               .c2_rdempty   (slave_RDEMPTY),
+               .c2_rddata    (slave_RDDATA),
+               .c2_wren      (slave_WREN),
+               .c2_wrfull    (slave_WRFULL),
+               .c2_wrdata    (slave_WRDATA)
+               );
+   
+
+   // Arb => Transport
    dual_clock_fifo #(
                      .ADDR_WIDTH   (4),
                      .DATA_WIDTH   (8))
@@ -174,15 +236,15 @@ module flexsoc_cm3
               .rd_clk_i   (TRANSPORT_CLK),
               .rd_rst_i   (~PORESETn),
               .wr_rst_i   (~PORESETn),
-              .wr_en_i    (host_WREN),
-              .wr_data_i  (host_WRDATA),
-              .full_o     (host_WRFULL),
+              .wr_en_i    (arb_WREN),
+              .wr_data_i  (arb_WRDATA),
+              .full_o     (arb_WRFULL),
               .rd_en_i    (trans_RDEN),
               .rd_data_o  (trans_RDDATA),
               .empty_o    (trans_RDEMPTY)
               );
 
-   // Transport => Host
+   // Transport => Arb
    dual_clock_fifo #(
                      .ADDR_WIDTH   (4),
                      .DATA_WIDTH   (8))
@@ -191,9 +253,9 @@ module flexsoc_cm3
               .wr_clk_i   (TRANSPORT_CLK),
               .rd_rst_i   (~PORESETn),
               .wr_rst_i   (~PORESETn),
-              .rd_en_i    (host_RDEN),
-              .rd_data_o  (host_RDDATA),
-              .empty_o    (host_RDEMPTY),
+              .rd_en_i    (arb_RDEN),
+              .rd_data_o  (arb_RDDATA),
+              .empty_o    (arb_RDEMPTY),
               .wr_en_i    (trans_WREN),
               .wr_data_i  (trans_WRDATA),
               .full_o     (trans_WRFULL)
@@ -233,7 +295,7 @@ module flexsoc_cm3
             .FCLK         (CLK),
             .HCLK         (CLK),
             .PORESETn     (PORESETn),
-            .CPURESETn    (cpureset_n),
+            .CPURESETn    (cpureset_n & ~cpu_reset_o),
             .SYSRESETREQ  (sysresetreq),
             
             // IRQs

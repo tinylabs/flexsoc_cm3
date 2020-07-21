@@ -4,7 +4,7 @@
 #
 
 # Debug
-set -x
+#set -x
 
 # Decode arguments
 if [ $# -eq 2 ]; then

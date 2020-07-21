@@ -6,10 +6,11 @@ filesets:
     rtl:
         depend:
             - cm3_core
+            - ahb3lite_csr
             - ahb3lite_memory
             - ahb3lite_host_master
-            - ahb3lite_default_slave
-            - ahb3lite_csr
+            - ahb3lite_host_slave
+            - fifo_arb
             - fifo
             - uart_transport
         files:
@@ -61,6 +62,9 @@ generate:
                 slave_en:
                     width: 1
                     type: rw
+                cpu_reset:
+                    width: 1
+                    type: rw
                     
     soc_intercon:
         generator: ahb3lite_intercon_gen
@@ -82,10 +86,10 @@ generate:
                 ahb3_csr:
                     offset: 0xE0000000
                     size:   16
-                ahb3_default_slave:
+                ahb3_host_slave:
                     idx:    3 # Force last slave
                     offset: 0
-                    size:   0xffffffff
+                    size:   0x100000000 # Accept all non-matching requests
 
 targets:
     default: &base

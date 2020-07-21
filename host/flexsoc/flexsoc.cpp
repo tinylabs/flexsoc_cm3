@@ -181,8 +181,10 @@ int flexsoc_open (char *id, recv_cb_t cb)
 
 void flexsoc_send (const char *buf, int len)
 {
-  if (dev)
+  if (dev) {
+    if (DEBUG) dump ("=>", (uint8_t *)buf, len);
     dev->Write (buf, len);
+  }
 }
 
 void flexsoc_close (void)
