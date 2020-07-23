@@ -90,7 +90,7 @@ int main (int argc, char **argv)
 
   if (argc != 2)
     err ("Must pass interface");
-  
+
   // Open interface to flexsoc
   rv = flexsoc_open (argv[1], NULL);
   if (rv)
@@ -103,7 +103,7 @@ int main (int argc, char **argv)
   // Run read tests
   if (read_test ())
     err ("Read test failed");
-  
+
   // Close interface
   flexsoc_close ();
   return 0;

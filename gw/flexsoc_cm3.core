@@ -10,6 +10,7 @@ filesets:
             - ahb3lite_memory
             - ahb3lite_host_master
             - ahb3lite_host_slave
+            - ahb3lite_irq_slave
             - fifo_arb
             - fifo
             - uart_transport
@@ -54,7 +55,6 @@ generate:
         generator: ahb3lite_csr_gen
         parameters:
             instance: ahb3_csr
-            address: 0xe0000000
             registers:
                 flexsoc_id:
                     width: 32
@@ -86,6 +86,9 @@ generate:
                 ahb3_csr:
                     offset: 0xE0000000
                     size:   16
+                ahb3_irq:
+                    offset: 0xE0000100
+                    size:   64
                 ahb3_host_slave:
                     idx:    3 # Force last slave
                     offset: 0

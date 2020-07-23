@@ -44,27 +44,14 @@ module flexsoc_cm3
 `include "flexsoc_csr.vh"
    
    // IRQs to cm3 core
-   logic [15:0] irq;   
-   assign irq = {16'h0};
+`define IRQ_CNT   32
+   logic [`IRQ_CNT-1:0] irq;   
 
-   // Assign registers
-   always @(posedge CLK)
-     begin
-        // Register reset values
-        if (~PORESETn)
-          begin
-             cpu_reset_i <= 1;
-          end
-        // Otherwise drive input with output
-        else
-          begin
-             flexsoc_id <= 32'hdeadd00d;
-             slave_en_i <= slave_en_o;
-             cpu_reset_i <= cpu_reset_o;
-          end
-     end
-  
-   
+   // Initialize cpu in reset
+   assign cpu_reset_i = ~PORESETn ? 1'b1 : cpu_reset_o;
+   assign slave_en_i = slave_en_o;
+   assign flexsoc_id = 32'hdeadd00d;
+
    // CPU reset controller
    logic        cpureset_n, sysresetreq;
    logic [3:0]  cpureset_ctr;
@@ -127,7 +114,29 @@ module flexsoc_cm3
                 .HREADY    (ahb3_ram_HREADY),
                 .HRESP     (ahb3_ram_HRESP)
                 );
-
+  
+   // IRQ slave
+   ahb3lite_irq_slave
+     #(
+       .IRQ_CNT  (`IRQ_CNT)
+       ) u_irq (
+                .CLK       (CLK),
+                .RESETn    (PORESETn),
+                .HSEL      (ahb3_irq_HSEL),
+                .HADDR     (ahb3_irq_HADDR),
+                .HWDATA    (ahb3_irq_HWDATA),
+                .HRDATA    (ahb3_irq_HRDATA),
+                .HWRITE    (ahb3_irq_HWRITE),
+                .HSIZE     (ahb3_irq_HSIZE),
+                .HBURST    (ahb3_irq_HBURST),
+                .HPROT     (ahb3_irq_HPROT),
+                .HTRANS    (ahb3_irq_HTRANS),
+                .HREADYOUT (ahb3_irq_HREADYOUT),
+                .HREADY    (ahb3_irq_HREADY),
+                .HRESP     (ahb3_irq_HRESP),
+                .IRQ       (irq)
+                );
+   
    // Master <=> arbiter
    wire master_RDEN, master_WREN, master_WRFULL, master_RDEMPTY;
    wire [7:0] master_RDDATA, master_WRDATA;
@@ -288,7 +297,7 @@ module flexsoc_cm3
    cm3_core
      #(
        .XILINX_ENC_CM3  (XILINX_ENC_CM3),
-       .NUM_IRQ         (16)
+       .NUM_IRQ         (`IRQ_CNT)
        )
      u_cm3 (
             // Clock and reset
