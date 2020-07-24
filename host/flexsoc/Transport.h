@@ -10,6 +10,8 @@
 
 #include <pthread.h>
 
+#define DEVICE_NOTAVAIL  -1000
+
 class Transport {
  protected:
   pthread_mutex_t rlock, wlock;

@@ -106,6 +106,9 @@ int TCPTransport::Open (char *id)
 
 void TCPTransport::Close (void)
 {
+  // Shutdown socket
+  shutdown (sockfd, SHUT_RDWR);
+  
   // Close socket
   close (sockfd);
 }
@@ -143,7 +146,7 @@ int TCPTransport::Read (char *buf, int len)
     rv = read (sockfd, &buf[bread], len - bread);
     if (rv <= 0) {
       pthread_mutex_unlock (&rlock);
-      return rv;
+      return (rv == -1) ? DEVICE_NOTAVAIL : rv;
     }
     
     // Increment count
@@ -169,7 +172,7 @@ int TCPTransport::Write (const char *buf, int len)
     rv = write (sockfd, &buf[written], len - written);
     if (rv <= 0) {
       pthread_mutex_unlock (&wlock);
-      return rv;
+      return (rv == -1) ? DEVICE_NOTAVAIL : rv;
     }
     
     // Increment count

@@ -10,3 +10,6 @@ create_clock -add -name jtag_clk -period 250.00 -waveform {0 125} [get_ports { T
 
 # Create virtual clock for IO
 create_clock -name slow_clk -period 1000.0
+
+# Set transport clock as async to hclk
+set_clock_groups -asynchronous -group transport_clk -group hclk

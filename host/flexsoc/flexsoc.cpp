@@ -14,7 +14,7 @@
 #include "flexsoc.h"
 #include "err.h"
 
-#define DEBUG   1
+#define DEBUG   0
 
 // Local variables
 static Transport *dev = NULL;
@@ -103,7 +103,13 @@ static void *flexsoc_listen (void *arg)
 
     // Get command
     rv = dev->Read (&buf[0], 1);
-    if (rv < 0)
+
+    // Device closed - kill thread
+    if (rv == DEVICE_NOTAVAIL)
+      return NULL;
+
+    // Check for other error conditions
+    else if (rv < 0)
       err ("Target connection broken: rv=%d", rv);
     else if (rv == 0) {
       /* libftdi doesn't block on sync call ftdi_read_data()
@@ -192,6 +198,9 @@ void flexsoc_close (void)
   // Close transport
   if (dev)
     dev->Close ();
+
+  // Wait for thread
+  pthread_join (tid, NULL);
 }
 
 int flexsoc_send_resp (const char *wbuf, int wlen, char *rbuf, int rlen)

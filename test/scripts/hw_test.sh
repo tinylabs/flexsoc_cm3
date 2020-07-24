@@ -25,7 +25,7 @@ fi
 set -m
 
 # Start simulator
-if [ -n $SIM ]; then
+if [ -n "$SIM" ]; then
 #    $SIM -u$PORT --vcd=sim.vcd &
     $SIM -u$PORT &
     SIM_PID=$!
@@ -37,7 +37,7 @@ $TEST $HW
 RV=$?
 
 # Kill sim if running
-if [ -n $SIM_PID ]; then
+if [ -n "$SIM_PID" ]; then
     kill -9 $SIM_PID
 fi
 

@@ -53,18 +53,25 @@ int FTDITransport::Open (char *id)
   rv = ftdi_set_bitmode (ftdi, 0, BITMODE_RESET);
   if (rv)
     err ("Failed to reset bitmode");
+
+  // Set baudrate to 12Mbaud (only applies to serial)
+  rv = ftdi_set_baudrate (ftdi, 12000000);
+  if (rv)
+    err ("Failed to set baudrate");
   
   // Decrease latency timer to minimum
   rv = ftdi_set_latency_timer (ftdi, 1);
   if (rv)
     err ("Failed to set latency timer");
-
+  
   return 0;
 }
 
 void FTDITransport::Close (void)
 {
-  ftdi_usb_close (ftdi);
+  struct ftdi_context *id = ftdi;
+  ftdi = NULL;  
+  ftdi_usb_close (id);
 }
 
 void FTDITransport::Flush (void)
@@ -76,9 +83,14 @@ void FTDITransport::Flush (void)
 int FTDITransport::Read (char *buf, int len)
 {
   int rv;
-  
+
+  // Do read
   rv = ftdi_read_data (ftdi, (unsigned char *)buf, len);
-  if (rv < 0)
+
+  // Device has been closed - LIBUSB_ERROR_NO_DEVICE
+  if (rv == -4)
+    return DEVICE_NOTAVAIL;
+  else if (rv < 0)
     err ("FTDI read failed: rv=%d", rv);
   return rv;
 }
@@ -87,9 +99,15 @@ int FTDITransport::Write (const char *buf, int len)
 {
   int rv;
   
+  // Do write
   rv = ftdi_write_data (ftdi, (unsigned char *)buf, len);
-  if (rv < 0)
+
+  // Device has been closed - LIBUSB_ERROR_NO_DEVICE
+  if (rv == -4)
+    return DEVICE_NOTAVAIL;
+  else if (rv < 0)
     err ("FTDI write failed: rv=%d", rv);
+
   return rv;
 }
 

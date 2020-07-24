@@ -12,8 +12,8 @@ module flexsoc_cm3
     parameter ROM_SZ         = 0,
     parameter RAM_SZ         = 0,
     parameter ROM_FILE       = "",
-    parameter TRANSPORT_FREQ = 50000000,
-    parameter TRANSPORT_BAUD = 15625000
+    parameter TRANSPORT_FREQ = 0,
+    parameter TRANSPORT_BAUD = 0
   ) (
      // Clock and reset
      input  CLK,
@@ -272,8 +272,8 @@ module flexsoc_cm3
    
    // Host transport
    uart_transport #(
-                    .FREQ (TRANSPORT_FREQ),
-                    .BAUD (TRANSPORT_BAUD))
+                    .FREQ       (TRANSPORT_FREQ),
+                    .BAUD       (TRANSPORT_BAUD))
    u_transport (
                 .CLK        (TRANSPORT_CLK),
                 .RESETn     (PORESETn),
