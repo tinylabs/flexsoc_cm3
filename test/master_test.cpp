@@ -28,7 +28,7 @@ static int write_test (void)
   // Write word data
   if (flexsoc_writew (0x20000000, dat, 4))
     return -1;
-  
+
   // Write hwrd data
   if (flexsoc_writeh (0x20000010, dath, 8))
     return -1;
@@ -36,7 +36,7 @@ static int write_test (void)
   // Write word data
   if (flexsoc_writeb (0x20000020, datb, 16))
     return -1;
-  
+
   return 0;
 }
 
@@ -62,7 +62,7 @@ static int read_test (void)
   // Verify data
   if (memcmp (exp, dat, sizeof (dat)))
     return -1;
-  
+
   // Read hwrd data
   memset (dat, 0, sizeof (dat));
   if (flexsoc_readh (0x20000010, dath, 8))

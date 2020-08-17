@@ -21,12 +21,8 @@ void flexsoc_close (void);
 //
 // Raw interface - send/receive bytes
 //
-// Read/write through flexsoc master interface
-int flexsoc_send_resp (const char *wbuf, int wlen, char *rbuf, int rlen);
-
-// Send plugin response
-// Only use from the plugin framework
-void flexsoc_send (const char *wbuf, int wlen);
+void flexsoc_send (const uint8_t *buf, int len);
+int flexsoc_recv (uint8_t *buf, int len);
 
 // Master read/write interface
 int flexsoc_readw (uint32_t addr, uint32_t *data, int len);

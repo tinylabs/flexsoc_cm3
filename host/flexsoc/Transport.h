@@ -26,9 +26,13 @@ class Transport {
   // Interface to be met
   virtual int Open (char *id) = 0;
   virtual void Close (void) = 0;
-  virtual int Read (char *buf, int len) = 0;
-  virtual int Write (const char *buf, int len) = 0;
+  virtual int Read (uint8_t *buf, int len) = 0;
+  virtual int Write (const uint8_t *buf, int len) = 0;
   virtual void Flush (void) = 0;
+
+  // Optional READ/WRITE size
+  void ReadSize (uint32_t sz) {}
+  void WriteSize (uint32_t sz) {}
 };
 
 #endif /* TRANSPORT_H */

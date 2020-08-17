@@ -32,8 +32,7 @@ static timespec diff(timespec start, timespec end)
 
 static double tsFloat (timespec  time)
 {
-  return ((double) time.tv_sec + (time.tv_nsec / 1000000000.0)) ;
-
+  return ((double) time.tv_sec + (time.tv_nsec / 1000000000.0));
 }
 
 static int write_throughput (void)
@@ -64,8 +63,8 @@ static int write_throughput (void)
   free (data);
 
   // Print write throughput
-  printf ("write_throughput: %.2fbps\n",
-          ((double)BUFSZ_WORD * sizeof (uint32_t) * 8)/ tsFloat (elapsed));
+  printf ("write_throughput:  %lu bytes/sec\n",
+          ((long)((BUFSZ_WORD * sizeof (uint32_t))/tsFloat (elapsed))));
   return 0;
 }
 
@@ -94,18 +93,18 @@ static int read_throughput (void)
   // Verify data
   for (i = 0; i < BUFSZ_WORD; i++)
     if (exp[i] != data[i])
-      err ("Read mismatch");
+      err ("[%d] Read mismatch: %08X != %08X", i, exp[i], data[i]);
   
   // Calculate time
   elapsed = diff (start, stop);
   
-  // Release buffer
-  free (data);
+  // Release buffer 
   free (exp);
+  free (data);
   
   // Print write throughput
-  printf ("read_throughput:  %.2fbps\n",
-          ((double)BUFSZ_WORD * sizeof (uint32_t) * 8)/ tsFloat (elapsed));
+  printf ("read_throughput:  %lu bytes/sec\n",
+          ((long)((BUFSZ_WORD * sizeof (uint32_t))/tsFloat (elapsed))));
   return 0;
 }
 

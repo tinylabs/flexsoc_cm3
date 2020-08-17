@@ -69,12 +69,12 @@ static void slave_cb (uint8_t *buf, int len)
 
   // Send response
   if (cmd & 0x08) // Write command
-    flexsoc_send ((char *)&resp, 1);
+    flexsoc_send (resp, 1);
   else { // Read command
     switch (cmd & 3) {
-      case 0: flexsoc_send ((char *)&resp, 2); break;
-      case 1: flexsoc_send ((char *)&resp, 3); break;
-      default: flexsoc_send ((char *)&resp, 5); break;
+      case 0: flexsoc_send (resp, 2); break;
+      case 1: flexsoc_send (resp, 3); break;
+      default: flexsoc_send (resp, 5); break;
     }
   }
     

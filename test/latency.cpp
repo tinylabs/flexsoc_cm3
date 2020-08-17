@@ -44,13 +44,13 @@ static void slave_cb (uint8_t *buf, int len)
   // Write
   if (buf[0] & 0x08) {
     resp[0] = 0x00;
-    flexsoc_send ((char *)resp, 1);
+    flexsoc_send (resp, 1);
   }
   // Readw
   else {
     resp[0] = 0x30;
     memcpy (&resp[1], "\x11\x22\x33\x44", 4);
-    flexsoc_send ((char *)resp, 5);
+    flexsoc_send (resp, 5);
   }
 }
 
@@ -120,7 +120,8 @@ static int slave_latency (void)
 
     // Get elapsed, subtract master
     elapsed = diff (start, slave_stop);
-    elapsed.tv_nsec -= master_latency_ns;
+    if (master_latency_ns < elapsed.tv_nsec)
+      elapsed.tv_nsec -= master_latency_ns;
 
     // Average
     if (i)
@@ -136,7 +137,8 @@ static int slave_latency (void)
 int main (int argc, char **argv)
 {
   int rv;
-
+  uint32_t val = 3;
+  
   if (argc != 2)
     err ("Must pass interface");
 
@@ -148,8 +150,12 @@ int main (int argc, char **argv)
   // Test master latency
   if (master_latency ())
     err ("Master latency test failed");
+
+  // Enable slave interface
+  if (flexsoc_writew (0xE0000004, &val, 1))
+    err ("Failed to enable slave interface");
   
-  // Run read tests
+  // Test slave latency
   if (slave_latency ())
     err ("Slave latency test failed");
 

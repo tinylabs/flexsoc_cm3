@@ -11,9 +11,7 @@ module fpga_top
     parameter XILINX_ENC_CM3       = 0,
     parameter ROM_SZ               = 0,
     parameter RAM_SZ               = 0,
-    parameter ROM_FILE             = "",
-    parameter TRANSPORT_FREQ       = 0,
-    parameter TRANSPORT_BAUD       = 0
+    parameter ROM_FILE             = ""
     )(
       input       CLK_100M,
       input       RESET,
@@ -147,9 +145,7 @@ module fpga_top
        .XILINX_ENC_CM3       (XILINX_ENC_CM3),
        .ROM_SZ               (ROM_SZ),
        .RAM_SZ               (RAM_SZ),
-       .ROM_FILE             (ROM_FILE),
-       .TRANSPORT_FREQ       (TRANSPORT_FREQ),
-       .TRANSPORT_BAUD       (TRANSPORT_BAUD)
+       .ROM_FILE             (ROM_FILE)
        )
    u_soc (
           .CLK           (hclk),
@@ -164,5 +160,5 @@ module fpga_top
           .UART_TX       (UART_TX),
           .UART_RX       (UART_RX)
           );
-   
+
 endmodule // fpga_top

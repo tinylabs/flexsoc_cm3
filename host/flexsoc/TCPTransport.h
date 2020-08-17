@@ -26,8 +26,8 @@ class TCPTransport : public Transport {
   // Implement interface
   int Open (char *id);
   void Close (void);
-  int Read (char *buf, int len);
-  int Write (const char *buf, int len);
+  int Read (uint8_t *buf, int len);
+  int Write (const uint8_t *buf, int len);
   void Flush (void);
 };
 

@@ -13,9 +13,22 @@ filesets:
             - ahb3lite_irq_slave
             - fifo_arb
             - fifo
-            - uart_transport
+            - uart_fifo
         files:
             - rtl/flexsoc_cm3.sv : {file_type : verilogSource}
+
+    loopback_rtl:
+        depend:
+            - fifo
+            - uart_fifo
+        files:
+            - rtl/io_loopback.sv : {file_type : verilogSource}
+
+    loopback_top:
+        depend:
+            - vivado_probe
+        files:
+            - rtl/loopback_top.sv : {file_type : verilogSource}
 
     cm3_full_dep: # Can only be used on vivado
         depend:
@@ -38,6 +51,12 @@ filesets:
             - verilator_utils
         files:
             - bench/tb.cpp : {file_type : cppSource}
+
+    verilator_loopback_tb:
+        depend:
+            - verilator_utils
+        files:
+            - bench/tb_loopback.cpp : {file_type : cppSource}
 
     support:
         files:
@@ -98,7 +117,7 @@ targets:
     default: &base
         generate: [flexsoc_csr, soc_intercon]
         filesets: [ahb3lite_csr_dep, ahb3lite_intercon_dep, rtl, support]
-        parameters: [XILINX_ENC_CM3=0,ROM_SZ,RAM_SZ,TRANSPORT_FREQ,TRANSPORT_BAUD]
+        parameters: [XILINX_ENC_CM3=0,ROM_SZ,RAM_SZ]
 
     sim:
         <<: *base
@@ -112,12 +131,30 @@ targets:
                 #make_options: [OPT_FAST=-Ofast]
                 run_options: [--vcd=sim.vcd, --timeout=3000]
 
+    sim_loopback:
+        filesets: [loopback_rtl, verilator_loopback_tb]
+        default_tool: verilator
+        toplevel: [io_loopback]
+        tools:
+            verilator:
+                verilator_options: [-sv, --cc, --trace, --clk, CLK]
+                run_options: [--vcd=sim.vcd, --timeout=3000, --uart-server=5667]
+
+    arty_loopback:
+        filesets: [loopback_rtl, loopback_top, constraints]
+        default_tool: vivado
+        toplevel: [loopback_top]
+        tools:
+            vivado:
+                part: xc7a35ticsg324-1L
+                #vivado-settings: /opt/xilinx/Vivado/2020.1/settings64.sh
+        
     arty:
         <<: *base
         description: Synthesize flexsoc_cm3 for Digilent Arty-A35T
         default_tool: vivado
         filesets_append: [fpga_top, cm3_full_dep, constraints]
-        parameters: [XILINX_ENC_CM3=1,ROM_SZ,RAM_SZ,TRANSPORT_FREQ=48000000,TRANSPORT_BAUD=12000000]
+        parameters: [XILINX_ENC_CM3=1,ROM_SZ,RAM_SZ]
         toplevel: [fpga_top]
         tools:
             vivado:
@@ -145,17 +182,5 @@ parameters:
         datatype: int
         default: 16384
         description: Set size of RAM
-        paramtype: vlogparam
-
-    TRANSPORT_FREQ:
-        datatype: int
-        default: 50000000
-        description: Freq of transport driver
-        paramtype: vlogparam
-
-    TRANSPORT_BAUD:
-        datatype: int
-        default: 12500000
-        description: Baudrate of transport if applicable
         paramtype: vlogparam
         

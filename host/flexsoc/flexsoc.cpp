@@ -13,16 +13,30 @@
 #include "FTDITransport.h"
 #include "flexsoc.h"
 #include "err.h"
+#include "Cbuf.h"
 
-#define DEBUG   0
+#define DEBUG         0
+
+// Transfer size
+#define READ_SEND_SZ   (180)
+#define WRITE_SEND_SZ  (READ_SEND_SZ * 5)
+
+// Max write/read recv buffer
+#define WRITE_RECV_SZ (WRITE_SEND_SZ / 2)
+#define READ_RECV_SZ  (READ_SEND_SZ * 5)
+
+// Master buf size
+#define MBUF_SZ   (16 * 1024)
 
 // Local variables
 static Transport *dev = NULL;
-static pthread_t tid;
+static pthread_t read_tid;
 
-// One outstanding master transaction at a time
-static pthread_mutex_t resplock, mlock;
-static char *exp_buf;
+// Circular buffer
+static Cbuf *mbuf;
+
+// Protect outgoing writes
+static pthread_mutex_t write_lock; 
 
 // Callbacks for plugin interface
 static recv_cb_t recv_cb = NULL;
@@ -93,58 +107,49 @@ static void dump (const char *str, const uint8_t *data, int len)
 
 static void *flexsoc_listen (void *arg)
 {
-  int rv;
-  char buf[17];
-  uint8_t cnt, read;
-  uint32_t addr, data;
+  int rv, pread;
+  uint8_t pkt[17];
   
   // Loop forever reading packets
   while (1) {
 
-    // Get command
-    rv = dev->Read (&buf[0], 1);
-
+    // Read from target interface
+    rv = dev->Read (pkt, 1);
+    
     // Device closed - kill thread
     if (rv == DEVICE_NOTAVAIL)
       return NULL;
 
-    // Check for other error conditions
-    else if (rv < 0)
-      err ("Target connection broken: rv=%d", rv);
-    else if (rv == 0) {
-      /* libftdi doesn't block on sync call ftdi_read_data()
-       * this eats up processor but without a
-       * blocking API we need this to service
-       * calls as fast as possible
-       */
-      continue;
-    }
+    // Write to buffer
+    if (rv > 0) {
+      int written = 0, sz = rv;
 
-    // Read the rest of the data
-    read = 0;
-    cnt = cmd2payload (buf[0]);
-    if (cnt) {
-      while (read < cnt) {
-        rv = dev->Read (&buf[1 + read], cnt);
-        if (rv < 0)
-          err ("Target connection broken: rv=%d", rv);
-        read += rv;
+      // Get size
+      sz = cmd2payload (pkt[0]);
+      pread = 0;
+    
+      // Read rest of packet
+      while (pread < sz) {
+        rv = dev->Read (&pkt[1 + pread], sz - pread);
+        pread += rv;
       }
-    }
 
-    // Master response
-    if ((buf[0] & 0x80) == 0x80) {
-
-      // Copy response
-      memcpy (exp_buf, buf, cnt + 1);
-            
-      // Unlock mutex
-      pthread_mutex_unlock (&resplock);
-    }
-    // Pass to callback if registered
-    else if (recv_cb) {
-      if (DEBUG) dump ("<=", (uint8_t *)buf, cnt + 1);
-      recv_cb ((uint8_t *)buf, cnt + 1);
+      // Dump if debug
+      if (DEBUG) dump ("<=", pkt, sz + 1);
+    
+      // Copy to mbuf or dispatch to slave
+      if (pkt[0] & CMD_INTERFACE_MASTER) {
+        int written = 0;
+        
+        while (written < sz + 1) {
+          rv = mbuf->Write (&pkt[written], sz + 1 - written);
+          written += rv;
+        }
+      }
+      // Dispatch to slave
+      else if (recv_cb) {
+        recv_cb (pkt, sz + 1);
+      }
     }
   }
 }
@@ -153,7 +158,7 @@ static void *flexsoc_listen (void *arg)
 int flexsoc_open (char *id, recv_cb_t cb)
 {
   int rv;
-
+  
   // If it looks like an IP address create TCP connection
   // Else try FTDI
   if (strchr (id, ':') || strchr (id, '.'))
@@ -166,15 +171,14 @@ int flexsoc_open (char *id, recv_cb_t cb)
   if (rv)
     err ("Failed to open device: %s (rv=%d)", id, rv);
 
-  // Initialize the mutexes
-  pthread_mutex_init (&resplock, NULL);
-  pthread_mutex_init (&mlock, NULL);
-
-  // Default to locked position
-  pthread_mutex_lock (&resplock);
+  // Create cirular buffer
+  mbuf = new Cbuf (MBUF_SZ);
   
+  // Create write lock
+  pthread_mutex_init (&write_lock, NULL);
+
   // Spin up thread to read transport
-  rv = pthread_create (&tid, NULL, &flexsoc_listen, NULL);
+  rv = pthread_create (&read_tid, NULL, &flexsoc_listen, NULL);
   if (rv)
     err ("Failed to spawn flexsoc thread!");
 
@@ -185,12 +189,33 @@ int flexsoc_open (char *id, recv_cb_t cb)
   return 0;
 }
 
-void flexsoc_send (const char *buf, int len)
+void flexsoc_send (const uint8_t *buf, int len)
 {
+  int rv, written = 0;
+  // Lock write mutex
+  pthread_mutex_lock (&write_lock);
   if (dev) {
     if (DEBUG) dump ("=>", (uint8_t *)buf, len);
-    dev->Write (buf, len);
+    while (written < len) {
+      rv = dev->Write (buf, len);
+      if (rv < 0) {
+        err ("flexsoc_send() failed");
+      }
+      written += rv;
+    }
   }
+  pthread_mutex_unlock (&write_lock);
+}
+
+int flexsoc_recv (uint8_t *buf, int len)
+{
+  int read = 0, rv;
+
+  while (read < len) {
+    rv = mbuf->Read (&buf[read], len - read);
+    read += rv;
+  }
+  return read;
 }
 
 void flexsoc_close (void)
@@ -200,83 +225,163 @@ void flexsoc_close (void)
     dev->Close ();
 
   // Wait for thread
-  pthread_join (tid, NULL);
+  pthread_join (read_tid, NULL);
+
+  // Free cbuf
+  delete mbuf;
 }
 
-int flexsoc_send_resp (const char *wbuf, int wlen, char *rbuf, int rlen)
+static void host16_to_buf (uint8_t *buf, const uint8_t *host)
 {
-  int rv;
-  
-  if (!dev)
-    return -1;
+  *((uint16_t *)buf) = htons (*((uint16_t *)host));
+}
 
-  // Grab master lock
-  pthread_mutex_lock (&mlock);
-  
-  // Save num bytes/buffer
-  exp_buf = rbuf;
-  if (DEBUG) dump ("=>", (uint8_t *)wbuf, wlen);
-  
-  // Write to device
-  rv = dev->Write (wbuf, wlen);
-  if (rv != wlen)
-    err ("Unexpected resp: rv=%d", rv);
+static void host32_to_buf (uint8_t * buf, const uint8_t *host)
+{
+  *((uint32_t *)buf) = htonl (*((uint32_t *)host));
+}
 
-  // Block until response received
-  if (rbuf && rlen)
-    pthread_mutex_lock (&resplock);
-  if (DEBUG) dump ("<=", (uint8_t *)rbuf, rlen);
-  
-  // Release master lock
-  pthread_mutex_unlock (&mlock);
+static void buf_to_host16 (uint8_t *host, const uint8_t *buf)
+{
+  *((uint16_t *)host) = ntohs (*((uint16_t *)buf));
+}
 
-  return 0;
+static void buf_to_host32 (uint8_t *host, const uint8_t * buf)
+{
+  *((uint32_t *)host) = ntohl (*((uint32_t *)buf));
+}
+
+static int read_process (uint8_t width, uint8_t *data, int rcnt)
+{
+  int i, read = 0;
+  uint8_t rbuf[READ_RECV_SZ];
+
+  // Debug only
+  if (rcnt > READ_RECV_SZ) {
+    printf ("rcnt=%d READ_RECV_SZ=%d\n", rcnt, READ_RECV_SZ);
+    while (1) ;
+  }
+  
+  // Read results
+  flexsoc_recv (rbuf, rcnt);
+  for (i = 0; i < (rcnt / (1 + width)); i++) {
+    
+    // Verify there wasn't an error
+    if (rbuf[i * (1 + width)] & 1)
+      err ("Read failed: %02X", rbuf[i * (1 + width)]);
+
+    // Convert back to host endian
+    switch (width) {
+      case 1: data[read] = rbuf[(i * (1 + width)) + 1]; break;
+      case 2: buf_to_host16 (&data[read], &rbuf[(i * (1 + width)) + 1]); break;
+      case 4: buf_to_host32 (&data[read], &rbuf[(i * (1 + width)) + 1]); break;
+    }
+    
+    // Increment read
+    read += width;
+  }
+  
+  // Return read
+  return read;
+}
+
+static int write_process (int rcnt)
+{
+  int i, written = 0;
+  uint8_t rbuf[WRITE_RECV_SZ];
+
+  // Debug only
+  if (rcnt > WRITE_RECV_SZ) {
+    printf ("rcnt=%d READ_RECV_SZ=%d\n", rcnt, WRITE_RECV_SZ);
+    while (1) ;
+  }
+
+  // Read results
+  flexsoc_recv (rbuf, rcnt);
+  for (i = 0; i < rcnt; i++) {
+    
+    // Verify there wasn't an error
+    if (rbuf[i] & 1)
+      err ("Write failed: %02X", rbuf[i]);    
+    
+    // Increment read
+    written++;
+  }
+  
+  // Return read
+  return written;
 }
 
 static int flexsoc_read (uint8_t width, uint32_t addr, uint8_t *data, int len)
 {
-  int rv, i, wlen = 5;
-  char buf[5];
-
+  int rv, i, bi = 0, idx = 0, read = 0;
+  bool process = false;
+  uint8_t *tbuf[2];
+  int rcnt[2] = {0, 0};
+  
   // Handle empty reads
   if (len <= 0)
     return 0;
   
-  // Assemble command - payload is address
-  buf[0] = CMD_INTERFACE_MASTER | payload2cmd (4) | CMD_READ | CMD_WIDTH (width);
-  *((uint32_t *)&buf[1]) = htonl (addr);
-  
+  // Malloc tbuf
+  tbuf[0] = (uint8_t *)malloc (READ_SEND_SZ);
+  tbuf[1] = (uint8_t *)malloc (READ_SEND_SZ);
+  if (!tbuf[0] || (!tbuf[1]))
+    err ("Failed to malloc tbuf");
+
+  // Set read/write size
+  dev->WriteSize (READ_SEND_SZ);
+  dev->ReadSize (READ_RECV_SZ);
+
   // Read all data
   for (i = 0; i < len; i++) {
 
-    // Send incrementing read after first address with command
-    if (i != 0) {
-      buf[0] = CMD_INTERFACE_MASTER | payload2cmd (0) | CMD_READ | CMD_AUTOINC | CMD_WIDTH (width);
-      wlen = 1;
+    // If we've hit buffer size then flush
+    if (idx == READ_SEND_SZ) {        
+      flexsoc_send (tbuf[bi], idx);
+      bi = !bi; // Switch buffers
+      if (!bi) // Start processing responses
+        process = true;
+      idx = 0;
+
+      // If we've already sent two buffers then start processing
+      if (process) {
+        read += read_process (width, &data[read], rcnt[bi]);
+        rcnt[bi] = 0;
+      }
     }
 
-    // Start transaction with target
-    rv = flexsoc_send_resp (buf, wlen, buf, 1 + width);
-    if (rv)
-      return rv;
-
-    // If transaction failed return failure
-    if (buf[0] & 1)
-      return -1;
-
-    // Convert back to host endian
-    switch (width) {
-      case 1:
-        data[i] = buf[1];
-        break;
-      case 2:
-        *((uint16_t *)&data[i * width]) = ntohs (*((uint16_t *)&buf[1]));
-        break;
-      case 4:
-        *((uint32_t *)&data[i * width]) = ntohl (*((uint32_t *)&buf[1]));
-        break;
+    // Send full read with address
+    if (i == 0) {
+      tbuf[bi][idx] = CMD_INTERFACE_MASTER | payload2cmd (4) | CMD_READ | CMD_WIDTH (width);
+      idx++;
+      host32_to_buf (&tbuf[bi][idx], (uint8_t *)&addr);
+      idx += 4;
     }
+
+    // Send incrementing read after first command
+    else {
+      tbuf[bi][idx] = CMD_INTERFACE_MASTER | payload2cmd (0) | CMD_READ | CMD_AUTOINC | CMD_WIDTH (width);
+      idx++;
+    }
+
+    // Update bytes expected back
+    rcnt[bi] += (1 + width);
   }
+  
+  // Flush any remaining data
+  if (idx != 0)
+    flexsoc_send (tbuf[bi], idx);
+  
+  // Process any remaining data
+  if (rcnt[!bi])
+    read += read_process (width, &data[read], rcnt[!bi]);
+  if (rcnt[bi])
+    read += read_process (width, &data[read], rcnt[bi]);
+  
+  // Free buffers
+  free (tbuf[0]);
+  free (tbuf[1]);
   
   // Return success
   return 0;
@@ -284,48 +389,85 @@ static int flexsoc_read (uint8_t width, uint32_t addr, uint8_t *data, int len)
 
 static int flexsoc_write (uint8_t width, uint32_t addr, const uint8_t *data, int len)
 {
-  int rv, i;
-  char buf[9];
-
-  // Handle empty reads
+  int rv, i, bi = 0, idx = 0, written = 0;
+  bool process = false;
+  uint8_t *tbuf[2];
+  int rcnt[2] = {0, 0};
+  
+  // Ignore empty writes
   if (len <= 0)
     return 0;
-  
-  // Assemble command - payload is address + data
-  buf[0] = CMD_INTERFACE_MASTER | payload2cmd (4 + width) | CMD_WRITE | CMD_WIDTH (width);
-  *((uint32_t *)&buf[1]) = htonl (addr);
 
-  // Loop through data
+  // Malloc tbuf
+  tbuf[0] = (uint8_t *)malloc (WRITE_SEND_SZ);
+  tbuf[1] = (uint8_t *)malloc (WRITE_SEND_SZ);
+  if (!tbuf[0] || (!tbuf[1]))
+    err ("Failed to malloc tbuf");
+  
+  // Set read/write size
+  dev->WriteSize (WRITE_SEND_SZ);
+  dev->ReadSize (WRITE_RECV_SZ);
+
+  // Loop over data to write
   for (i = 0; i < len; i++) {
 
-    if (i != 0) {
+    // If we've hit buffer size then flush
+    if (idx + 1 + width > WRITE_SEND_SZ) {
+      flexsoc_send (tbuf[bi], idx);
+      bi = !bi; // Switch buffers
+      idx = 0;
+      if (!bi) // Start processing responses
+        process = true;
 
-      // Send incrementing write
-      buf[0] = CMD_INTERFACE_MASTER | payload2cmd (width) | CMD_WRITE | CMD_AUTOINC | CMD_WIDTH (width);
+      // If we've already sent two buffers then start processing
+      if (process) {
+        written += write_process (rcnt[bi]);
+        rcnt[bi] = 0;
+      }
     }
-    
-    // Convert to network endian
+
+    // Send full write with address
+    if (i == 0) {
+      tbuf[bi][idx] = CMD_INTERFACE_MASTER | payload2cmd (4 + width) | CMD_WRITE | CMD_WIDTH (width);
+      idx++;
+      host32_to_buf (&tbuf[bi][idx], (uint8_t *)&addr);
+      idx += 4;
+    }
+
+    // Send incrementing write after first command
+    else {
+      tbuf[bi][idx] = CMD_INTERFACE_MASTER | payload2cmd (width) |
+        CMD_WRITE | CMD_AUTOINC | CMD_WIDTH (width);
+      idx++;
+    }
+
+    // Copy data to write buffer
     switch (width) {
-      case 1:
-        buf[i ? 1 : 5] = data[i];
-        break;
-      case 2:
-        *((uint16_t *)&buf[i ? 1 : 5]) = htons (*((uint16_t *)&data[i * width]));
-        break;
-      case 4:
-        *((uint32_t *)&buf[i ? 1 : 5]) = htonl (*((uint32_t *)&data[i * width]));
-        break;
+      case 1: tbuf[bi][idx] = data[i]; break;
+      case 2: host16_to_buf (&tbuf[bi][idx], &data[i * width]); break;
+      case 4: host32_to_buf (&tbuf[bi][idx], &data[i * width]); break;
     }
 
-    // Start transaction
-    rv = flexsoc_send_resp (buf, i ? 1 + width : 5 + width, buf, 1);
-    if (rv)
-      return rv;
+    // Update idx
+    idx += width;
     
-    // If transaction failed return
-    if (buf[0] & 0x1)
-      return -1;
+    // Update bytes expected back
+    rcnt[bi] += 1;
   }
+  
+  // Flush any remaining data
+  if (idx != 0)
+    flexsoc_send (tbuf[bi], idx);
+    
+  // Process any remaining data
+  if (rcnt[!bi])
+    written += write_process (rcnt[!bi]);
+  if (rcnt[bi])
+    written += write_process (rcnt[bi]);
+
+  // Free buffers
+  free (tbuf[0]);
+  free (tbuf[1]);
   
   // Return success
   return 0;

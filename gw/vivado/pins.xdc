@@ -19,3 +19,8 @@ set_false_path -from [get_ports { RESET }]
 set untimed_od 0.5
 set untimed_id 0.5
 set_input_delay  -clock [get_clocks hclk] -add_delay $untimed_id [get_ports RESET]
+
+# Ignore RX path, we oversample x4 and constrain max baud
+set_false_path -from [get_ports UART_RX]
+set_output_delay -clock [get_clocks transport_clk] -add_delay $untimed_id [get_ports UART_TX]
+#set_input_delay -clock [get_clocks transport_clk] -add_delay $untimed_id [get_ports UART_RX]

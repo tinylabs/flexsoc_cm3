@@ -99,7 +99,7 @@ int TCPTransport::Open (char *id)
 
   // Flush the socket
   Flush ();
-  
+
   // Success
   return 0;
 }
@@ -133,54 +133,32 @@ void TCPTransport::Flush (void)
   fcntl (sockfd, F_SETFL, flags);
 }
 
-int TCPTransport::Read (char *buf, int len)
+int TCPTransport::Read (uint8_t *buf, int len)
 {
   int rv;
-  int bread = 0;
 
   // Grab lock - the entire read must be atomic
   pthread_mutex_lock (&rlock);
   
-  while (bread < len) {
-    // Read from socket
-    rv = read (sockfd, &buf[bread], len - bread);
-    if (rv <= 0) {
-      pthread_mutex_unlock (&rlock);
-      return (rv == -1) ? DEVICE_NOTAVAIL : rv;
-    }
-    
-    // Increment count
-    bread += rv;
-  }
+  // Read from socket
+  rv = read (sockfd, buf, len);
 
   // Release lock
   pthread_mutex_unlock (&rlock);
-  return bread;
+  return (rv == -1) ? DEVICE_NOTAVAIL : rv;
 }
 
-int TCPTransport::Write (const char *buf, int len)
+int TCPTransport::Write (const uint8_t *buf, int len)
 {
   int rv;
-  int written = 0;
 
   // Grab lock - the entire read must be atomic
   pthread_mutex_lock (&wlock);
   
-  while (written < len) {
-
-    // Read from socket
-    rv = write (sockfd, &buf[written], len - written);
-    if (rv <= 0) {
-      pthread_mutex_unlock (&wlock);
-      return (rv == -1) ? DEVICE_NOTAVAIL : rv;
-    }
-    
-    // Increment count
-    written += rv;
-  }
+  // Read from socket
+  rv = write (sockfd, buf, len);
 
   // Release lock
   pthread_mutex_unlock (&wlock);
-  return written;
+  return (rv == -1) ? DEVICE_NOTAVAIL : rv;
 }
-

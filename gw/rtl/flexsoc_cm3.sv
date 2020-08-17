@@ -11,9 +11,7 @@ module flexsoc_cm3
     parameter XILINX_ENC_CM3 = 0,
     parameter ROM_SZ         = 0,
     parameter RAM_SZ         = 0,
-    parameter ROM_FILE       = "",
-    parameter TRANSPORT_FREQ = 0,
-    parameter TRANSPORT_BAUD = 0
+    parameter ROM_FILE       = ""
   ) (
      // Clock and reset
      input  CLK,
@@ -47,6 +45,9 @@ module flexsoc_cm3
 `define IRQ_CNT   32
    logic [`IRQ_CNT-1:0] irq;   
 
+   // Dropped host comm bytes
+   logic [9:0]          dropped;
+   
    // Initialize cpu in reset
    assign cpu_reset_i = ~PORESETn ? 1'b1 : cpu_reset_o;
    assign slave_en_i = slave_en_o;
@@ -136,7 +137,7 @@ module flexsoc_cm3
                 .HRESP     (ahb3_irq_HRESP),
                 .IRQ       (irq)
                 );
-   
+
    // Master <=> arbiter
    wire master_RDEN, master_WREN, master_WRFULL, master_RDEMPTY;
    wire [7:0] master_RDDATA, master_WRDATA;
@@ -207,7 +208,7 @@ module flexsoc_cm3
 
    // Create fifo arbiter to share connection with host
    fifo_arb #(
-              .AW  (3),
+              .AW  (4),
               .DW  (8))
    u_fifo_arb (
                .CLK          (CLK),
@@ -235,10 +236,9 @@ module flexsoc_cm3
                .c2_wrdata    (slave_WRDATA)
                );
    
-
    // Arb => Transport
    dual_clock_fifo #(
-                     .ADDR_WIDTH   (4),
+                     .ADDR_WIDTH   (8),
                      .DATA_WIDTH   (8))
    u_tx_fifo (
               .wr_clk_i   (CLK),
@@ -255,7 +255,7 @@ module flexsoc_cm3
 
    // Transport => Arb
    dual_clock_fifo #(
-                     .ADDR_WIDTH   (4),
+                     .ADDR_WIDTH   (8),
                      .DATA_WIDTH   (8))
    u_rx_fifo (
               .rd_clk_i   (CLK),
@@ -269,26 +269,27 @@ module flexsoc_cm3
               .wr_data_i  (trans_WRDATA),
               .full_o     (trans_WRFULL)
               );
-   
+  
+ 
    // Host transport
-   uart_transport #(
-                    .FREQ       (TRANSPORT_FREQ),
-                    .BAUD       (TRANSPORT_BAUD))
-   u_transport (
-                .CLK        (TRANSPORT_CLK),
-                .RESETn     (PORESETn),
-                // UART interface
-                .TX_PIN     (UART_TX),
-                .RX_PIN     (UART_RX),
-                // FIFO interface
-                .FIFO_WREN  (trans_WREN),
-                .FIFO_FULL  (trans_WRFULL),
-                .FIFO_DOUT  (trans_WRDATA),
-                .FIFO_RDEN  (trans_RDEN),
-                .FIFO_EMPTY (trans_RDEMPTY),
-                .FIFO_DIN   (trans_RDDATA)
-                );
-   
+   uart_fifo 
+     u_uart (
+             .CLK        (TRANSPORT_CLK),
+             .RESETn     (PORESETn),
+             // UART interface
+             .TX_PIN     (UART_TX),
+             .RX_PIN     (UART_RX),
+             // FIFO interface
+             .FIFO_WREN  (trans_WREN),
+             .FIFO_FULL  (trans_WRFULL),
+             .FIFO_DOUT  (trans_WRDATA),
+             .FIFO_RDEN  (trans_RDEN),
+             .FIFO_EMPTY (trans_RDEMPTY),
+             .FIFO_DIN   (trans_RDDATA),
+             // Dropped bytes
+             .DROPPED    (dropped)
+             );
+
    // Enable master ports
    assign ahb3_cm3_code_HSEL = 1'b1;
    assign ahb3_cm3_sys_HSEL = 1'b1;
@@ -353,6 +354,5 @@ module flexsoc_cm3
             .sys_HRESP     (ahb3_cm3_sys_HRESP),
             .sys_HREADY    (ahb3_cm3_sys_HREADY) 
            );
-
    
 endmodule // cm3_min_soc

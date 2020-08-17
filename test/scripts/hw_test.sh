@@ -35,6 +35,7 @@ fi
 # Run test
 $TEST $HW
 RV=$?
+echo "Result=" $RV
 
 # Kill sim if running
 if [ -n "$SIM_PID" ]; then

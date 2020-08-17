@@ -10,6 +10,10 @@ add_library( flexsoc
   flexsoc.cpp
   FTDITransport.cpp
   TCPTransport.cpp
+  Cbuf.cpp
   )
 
 target_link_libraries( flexsoc pthread ${LIBFTDI_LIBRARIES} )
+
+# Debug only
+#set_target_properties( flexsoc PROPERTIES COMPILE_FLAGS "-O0 -ggdb" )
