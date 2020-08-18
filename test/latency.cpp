@@ -14,7 +14,7 @@
 #include "err.h"
 
 #define SEED  0xdeadbeef
-#define COUNT 100
+#define COUNT 20
 #define ADDR  0x20000000
 
 // One way host <=> target latency
@@ -120,8 +120,6 @@ static int slave_latency (void)
 
     // Get elapsed, subtract master
     elapsed = diff (start, slave_stop);
-    if (master_latency_ns < elapsed.tv_nsec)
-      elapsed.tv_nsec -= master_latency_ns;
 
     // Average
     if (i)
@@ -129,6 +127,7 @@ static int slave_latency (void)
     else
       slave_latency_ns = elapsed.tv_nsec;
   }
+  slave_latency_ns /= 2;
   printf ("slave latency:  %.2fus\n", (float)slave_latency_ns / 1000);
   
   return 0;

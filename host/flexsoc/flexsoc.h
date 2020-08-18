@@ -22,7 +22,6 @@ void flexsoc_close (void);
 // Raw interface - send/receive bytes
 //
 void flexsoc_send (const uint8_t *buf, int len);
-int flexsoc_recv (uint8_t *buf, int len);
 
 // Master read/write interface
 int flexsoc_readw (uint32_t addr, uint32_t *data, int len);

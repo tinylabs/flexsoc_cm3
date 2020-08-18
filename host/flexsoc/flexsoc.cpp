@@ -17,11 +17,11 @@
 
 #define DEBUG         0
 
-// Transfer size
+// Read transfer size
 #define READ_SEND_SZ   (180)
 #define WRITE_SEND_SZ  (READ_SEND_SZ * 5)
 
-// Max write/read recv buffer
+// Write transfer size
 #define WRITE_RECV_SZ (WRITE_SEND_SZ / 2)
 #define READ_RECV_SZ  (READ_SEND_SZ * 5)
 
@@ -31,12 +31,16 @@
 // Local variables
 static Transport *dev = NULL;
 static pthread_t read_tid;
+static bool kill_thread = false;
 
 // Circular buffer
 static Cbuf *mbuf;
 
+// Ping-pong transaction buffers
+static uint8_t *tbuf[2];
+
 // Protect outgoing writes
-static pthread_mutex_t write_lock; 
+static pthread_mutex_t write_lock, api_lock; 
 
 // Callbacks for plugin interface
 static recv_cb_t recv_cb = NULL;
@@ -117,7 +121,7 @@ static void *flexsoc_listen (void *arg)
     rv = dev->Read (pkt, 1);
     
     // Device closed - kill thread
-    if (rv == DEVICE_NOTAVAIL)
+    if ((rv == DEVICE_NOTAVAIL) || kill_thread)
       return NULL;
 
     // Write to buffer
@@ -174,8 +178,17 @@ int flexsoc_open (char *id, recv_cb_t cb)
   // Create cirular buffer
   mbuf = new Cbuf (MBUF_SZ);
   
-  // Create write lock
+  // Create write lock (mux master/slave)
   pthread_mutex_init (&write_lock, NULL);
+
+  // API lock
+  pthread_mutex_init (&api_lock, NULL);
+
+  // Malloc tbuf
+  tbuf[0] = (uint8_t *)malloc (WRITE_SEND_SZ);
+  tbuf[1] = (uint8_t *)malloc (WRITE_SEND_SZ);
+  if (!tbuf[0] || (!tbuf[1]))
+    err ("Failed to malloc tbuf");
 
   // Spin up thread to read transport
   rv = pthread_create (&read_tid, NULL, &flexsoc_listen, NULL);
@@ -207,7 +220,7 @@ void flexsoc_send (const uint8_t *buf, int len)
   pthread_mutex_unlock (&write_lock);
 }
 
-int flexsoc_recv (uint8_t *buf, int len)
+static int flexsoc_recv (uint8_t *buf, int len)
 {
   int read = 0, rv;
 
@@ -220,12 +233,19 @@ int flexsoc_recv (uint8_t *buf, int len)
 
 void flexsoc_close (void)
 {
+  // Kill thread
+  kill_thread = true;
+  
+  // Wait for thread
+  pthread_join (read_tid, NULL);
+
   // Close transport
   if (dev)
     dev->Close ();
 
-  // Wait for thread
-  pthread_join (read_tid, NULL);
+  // Free buffers
+  free (tbuf[0]);
+  free (tbuf[1]);
 
   // Free cbuf
   delete mbuf;
@@ -316,19 +336,15 @@ static int flexsoc_read (uint8_t width, uint32_t addr, uint8_t *data, int len)
 {
   int rv, i, bi = 0, idx = 0, read = 0;
   bool process = false;
-  uint8_t *tbuf[2];
   int rcnt[2] = {0, 0};
   
   // Handle empty reads
   if (len <= 0)
     return 0;
-  
-  // Malloc tbuf
-  tbuf[0] = (uint8_t *)malloc (READ_SEND_SZ);
-  tbuf[1] = (uint8_t *)malloc (READ_SEND_SZ);
-  if (!tbuf[0] || (!tbuf[1]))
-    err ("Failed to malloc tbuf");
 
+  // Lock API lock
+  pthread_mutex_lock (&api_lock);
+  
   // Set read/write size
   dev->WriteSize (READ_SEND_SZ);
   dev->ReadSize (READ_RECV_SZ);
@@ -379,9 +395,8 @@ static int flexsoc_read (uint8_t width, uint32_t addr, uint8_t *data, int len)
   if (rcnt[bi])
     read += read_process (width, &data[read], rcnt[bi]);
   
-  // Free buffers
-  free (tbuf[0]);
-  free (tbuf[1]);
+  // Unlock API lock
+  pthread_mutex_unlock (&api_lock);
   
   // Return success
   return 0;
@@ -391,19 +406,15 @@ static int flexsoc_write (uint8_t width, uint32_t addr, const uint8_t *data, int
 {
   int rv, i, bi = 0, idx = 0, written = 0;
   bool process = false;
-  uint8_t *tbuf[2];
   int rcnt[2] = {0, 0};
   
   // Ignore empty writes
   if (len <= 0)
     return 0;
-
-  // Malloc tbuf
-  tbuf[0] = (uint8_t *)malloc (WRITE_SEND_SZ);
-  tbuf[1] = (uint8_t *)malloc (WRITE_SEND_SZ);
-  if (!tbuf[0] || (!tbuf[1]))
-    err ("Failed to malloc tbuf");
   
+  // Lock API lock
+  pthread_mutex_lock (&api_lock);
+
   // Set read/write size
   dev->WriteSize (WRITE_SEND_SZ);
   dev->ReadSize (WRITE_RECV_SZ);
@@ -465,9 +476,8 @@ static int flexsoc_write (uint8_t width, uint32_t addr, const uint8_t *data, int
   if (rcnt[bi])
     written += write_process (rcnt[bi]);
 
-  // Free buffers
-  free (tbuf[0]);
-  free (tbuf[1]);
+  // Unlock API lock
+  pthread_mutex_unlock (&api_lock);
   
   // Return success
   return 0;
