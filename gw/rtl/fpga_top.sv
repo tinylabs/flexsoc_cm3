@@ -14,7 +14,7 @@ module fpga_top
     parameter ROM_FILE             = ""
     )(
       input       CLK_100M,
-      input       RESET,
+      input       RESETn,
       // JTAG/SWD pins
       input       TCK_SWDCLK,
       input       TDI,
@@ -128,7 +128,7 @@ module fpga_top
    logic [7:0]         reset_ctr;
    always @(posedge hclk)
      begin
-        if (RESET | !hpll_locked)
+        if (!RESETn | !hpll_locked | !tpll_locked)
           reset_ctr <= 'hff;
         else if (reset_ctr)
           reset_ctr = reset_ctr - 1;

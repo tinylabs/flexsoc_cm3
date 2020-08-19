@@ -17,20 +17,7 @@ filesets:
         files:
             - rtl/flexsoc_cm3.sv : {file_type : verilogSource}
 
-    loopback_rtl:
-        depend:
-            - fifo
-            - uart_fifo
-        files:
-            - rtl/io_loopback.sv : {file_type : verilogSource}
-
-    loopback_top:
-        depend:
-            - vivado_probe
-        files:
-            - rtl/loopback_top.sv : {file_type : verilogSource}
-
-    cm3_full_dep: # Can only be used on vivado
+    cm3_full_dep:
         depend:
             - cm3_full
             
@@ -49,21 +36,15 @@ filesets:
         files:
             - bench/tb.cpp : {file_type : cppSource}
 
-    verilator_loopback_tb:
-        depend:
-            - verilator_utils
-        files:
-            - bench/tb_loopback.cpp : {file_type : cppSource}
-
     support:
         files:
             - scripts/flexsoc_cm3.cfg
         file_type: user
             
-    constraints:
+    arty:
         files:
-            - vivado/clocks.xdc : {file_type : xdc}
-            - vivado/pins.xdc   : {file_type : xdc}
+            - arty/clocks.xdc : {file_type : xdc}
+            - arty/pins.xdc   : {file_type : xdc}
             - vivado/vivado.tcl : {file_type : tclSource}
 
 generate:
@@ -139,29 +120,11 @@ targets:
                 #make_options: [OPT_FAST=-Ofast]
                 run_options: [--vcd=sim.vcd, --timeout=3000]
 
-    sim_loopback:
-        filesets: [loopback_rtl, verilator_loopback_tb]
-        default_tool: verilator
-        toplevel: [io_loopback]
-        tools:
-            verilator:
-                verilator_options: [-sv, --cc, --trace, --clk, CLK]
-                run_options: [--vcd=sim.vcd, --timeout=3000, --uart-server=5667]
-
-    arty_loopback:
-        filesets: [loopback_rtl, loopback_top, constraints]
-        default_tool: vivado
-        toplevel: [loopback_top]
-        tools:
-            vivado:
-                part: xc7a35ticsg324-1L
-                #vivado-settings: /opt/xilinx/Vivado/2020.1/settings64.sh
-        
     arty:
         <<: *base
         description: Synthesize flexsoc_cm3 for Digilent Arty-A35T
         default_tool: vivado
-        filesets_append: [fpga_top, cm3_full_dep, constraints]
+        filesets_append: [fpga_top, cm3_full_dep, arty]
         parameters: [XILINX_ENC_CM3=1,ROM_SZ,RAM_SZ]
         toplevel: [fpga_top]
         tools:
