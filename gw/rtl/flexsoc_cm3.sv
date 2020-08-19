@@ -48,11 +48,12 @@ module flexsoc_cm3
    // Dropped host comm bytes
    logic [9:0]          dropped;
    
-   // Initialize cpu in reset
+   // Initialize SoC registers
    assign cpu_reset_i = ~PORESETn ? 1'b1 : cpu_reset_o;
    assign slave_en_i = slave_en_o;
-   assign flexsoc_id = 32'hdeadd00d;
-
+   assign flexsoc_id = 32'hf1e850c1;
+   assign memory_id = (ROM_SZ >> 10) | ((RAM_SZ >> 10) << 16);
+   
    // CPU reset controller
    logic        cpureset_n, sysresetreq;
    logic [3:0]  cpureset_ctr;

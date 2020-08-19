@@ -15,5 +15,8 @@ add_library( flexsoc
 
 target_link_libraries( flexsoc pthread ${LIBFTDI_LIBRARIES} )
 
-# Debug only
+# Enable debug
 #set_target_properties( flexsoc PROPERTIES COMPILE_FLAGS "-O0 -ggdb" )
+
+# Add dependency to generate CSRs
+gen_csr( flexsoc )

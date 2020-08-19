@@ -38,12 +38,9 @@ filesets:
         files:
             - rtl/fpga_top.sv : {file_type : verilogSource}
 
-    ahb3lite_intercon_dep:
+    generator_deps:
         depend:
             - ahb3lite_intercon
-
-    ahb3lite_csr_dep:
-        depend:
             - ahb3lite_csr
             
     verilator_tb:
@@ -76,6 +73,9 @@ generate:
             instance: ahb3_csr
             registers:
                 flexsoc_id:
+                    width: 32
+                    type: ro
+                memory_id:
                     width: 32
                     type: ro
                 slave_en:
@@ -116,9 +116,17 @@ generate:
 targets:
     default: &base
         generate: [flexsoc_csr, soc_intercon]
-        filesets: [ahb3lite_csr_dep, ahb3lite_intercon_dep, rtl, support]
+        filesets: [generator_deps, rtl, support]
         parameters: [XILINX_ENC_CM3=0,ROM_SZ,RAM_SZ]
 
+    lint:
+        <<: *base
+        toplevel: [flexsoc_cm3]
+        default_tool: verilator
+        tools:
+            verilator:
+                mode: lint-only
+                
     sim:
         <<: *base
         description: Simulate flexsoc_cm3 using verilator

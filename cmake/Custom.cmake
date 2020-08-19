@@ -54,6 +54,29 @@ else( NOT CROSSCOMPILING )
     
   endfunction( plugin )
 
+  macro( gw_target NAME TOOL )
+    add_custom_target( ${NAME}
+      COMMENT "Generating gateware for ${NAME}..."
+      COMMAND ${FUSESOC_EXECUTABLE} --target=${NAME} ${CMAKE_PROJECT_NAME}
+      )
+  endmacro( gw_target )
+
+  function( gen_csr TARGET )
+    add_custom_command(
+      COMMENT "Generating CSR definitions"
+      COMMAND ${FUSESOC_EXECUTABLE} --target=lint ${CMAKE_PROJECT_NAME}
+      COMMAND cmake -E make_directory ${PROJECT_BINARY_DIR}/generated
+      COMMAND find ${CMAKE_CURRENT_BINARY_DIR}/build/${CMAKE_PROJECT_NAME}_0.1/lint-verilator/ -name '*.h' -exec cp {} ${PROJECT_BINARY_DIR}/generated \\\;
+      COMMAND cmake -E touch ${PROJECT_BINARY_DIR}/csr_generated.txt
+      OUTPUT  ${PROJECT_BINARY_DIR}/csr_generated.txt
+      )
+    add_custom_target( gen_csr
+      DEPENDS ${PROJECT_BINARY_DIR}/csr_generated.txt
+      )
+    add_dependencies( ${TARGET} gen_csr )
+    include_directories( ${PROJECT_BINARY_DIR}/generated )
+  endfunction( gen_csr )
+  
   macro( test_setup )
     # Decide where to run tests
     if( DEFINED ENV{FLEXSOC_HW} )

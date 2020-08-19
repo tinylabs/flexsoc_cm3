@@ -34,6 +34,9 @@ if( NOT CMAKE_CROSSCOMPILING )
   # Host application
   add_subdirectory( host )
 
+  # Add gateware wrappers
+  add_subdirectory( gw )
+  
   # Add tests
   add_subdirectory( test )
 endif()
