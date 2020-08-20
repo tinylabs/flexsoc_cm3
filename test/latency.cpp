@@ -1,5 +1,5 @@
 /**
- *  Test the master interface of flexsoc_cm3
+ *  Test the latency
  *
  *  All rights reserved.
  *  Tiny Labs Inc
@@ -9,7 +9,7 @@
 #include <string.h>
 #include <time.h>
 
-#include "flexsoc.h"
+#include "target.h"
 #include "common.h"
 #include "err.h"
 
@@ -21,6 +21,7 @@
 static unsigned long master_latency_ns;
 static unsigned long slave_latency_ns;
 static timespec slave_stop;
+static Target *target;
 
 static timespec diff(timespec start, timespec end)
 {
@@ -44,17 +45,17 @@ static void slave_cb (uint8_t *buf, int len)
   // Write
   if (buf[0] & 0x08) {
     resp[0] = 0x00;
-    flexsoc_send (resp, 1);
+    target->SlaveSend (resp, 1);
   }
   // Readw
   else {
     resp[0] = 0x30;
     memcpy (&resp[1], "\x11\x22\x33\x44", 4);
-    flexsoc_send (resp, 5);
+    target->SlaveSend (resp, 5);
   }
 }
 
-static int master_latency (void)
+static int master_latency (Target *target)
 {
   int i, rv;
   uint32_t seed = SEED;
@@ -70,8 +71,7 @@ static int master_latency (void)
     data[i] = rand32 (i ? &data[i-1] : &seed);
 
   // Write to RAM
-  if (flexsoc_writew (ADDR, data, COUNT))
-    return -1;
+  target->WriteW (ADDR, data, COUNT);
 
   // Measure latency of each read
   for (i = 0; i < COUNT; i++) {
@@ -79,12 +79,10 @@ static int master_latency (void)
     uint32_t val;
     
     clock_gettime (CLOCK_REALTIME, &start);
-    rv = flexsoc_readw (ADDR + (4 * i), &val, 1);
+    target->ReadW (ADDR + (4 * i), &val, 1);
     clock_gettime (CLOCK_REALTIME, &stop);
 
     // Verify read was OK
-    if (rv)
-      err ("Read failed: %d", rv);
     if (val != data[i])
       err ("[%d] %08X != %08X", i, val, data[i]);
 
@@ -105,7 +103,7 @@ static int master_latency (void)
   return 0;
 }
 
-static int slave_latency (void)
+static int slave_latency (Target *target)
 {
   int i, rv;
   uint32_t val;
@@ -116,7 +114,7 @@ static int slave_latency (void)
     
     // Execute read to invalid memory to get slave request
     clock_gettime (CLOCK_REALTIME, &start);
-    rv = flexsoc_readw (0x40000000, &val, 1);
+    target->ReadW (0x40000000, &val, 1);
 
     // Get elapsed, subtract master
     elapsed = diff (start, slave_stop);
@@ -141,24 +139,24 @@ int main (int argc, char **argv)
   if (argc != 2)
     err ("Must pass interface");
 
-  // Open interface to flexsoc
-  rv = flexsoc_open (argv[1], &slave_cb);
-  if (rv)
-    err ("Failed to open: %s", argv[1]);
-
+  // Open target
+  target = new Target (argv[1]);
+  
   // Test master latency
-  if (master_latency ())
+  if (master_latency (target))
     err ("Master latency test failed");
 
+  // Register slave
+  target->SlaveRegister (&slave_cb);
+
   // Enable slave interface
-  if (flexsoc_writew (0xE0000004, &val, 1))
-    err ("Failed to enable slave interface");
+  target->SlaveEn (true);
   
   // Test slave latency
-  if (slave_latency ())
+  if (slave_latency (target))
     err ("Slave latency test failed");
 
-  // Close interface
-  flexsoc_close ();
+  // Close target
+  delete target;
   return 0;
 }

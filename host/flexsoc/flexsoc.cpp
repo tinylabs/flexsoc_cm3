@@ -159,7 +159,7 @@ static void *flexsoc_listen (void *arg)
 }
 
 
-int flexsoc_open (char *id, recv_cb_t cb)
+int flexsoc_open (char *id)
 {
   int rv;
   
@@ -195,9 +195,6 @@ int flexsoc_open (char *id, recv_cb_t cb)
   if (rv)
     err ("Failed to spawn flexsoc thread!");
 
-  // Save callback
-  recv_cb = cb;
-  
   // Success
   return 0;
 }
@@ -498,17 +495,45 @@ int flexsoc_readb (uint32_t addr, uint8_t *data, int len)
   return flexsoc_read (1, addr, (uint8_t *)data, len);
 }
 
-int flexsoc_writew (uint32_t addr, uint32_t *data, int len)
+int flexsoc_writew (uint32_t addr, const uint32_t *data, int len)
 {
   return flexsoc_write (4, addr, (const uint8_t *)data, len);
 }
 
-int flexsoc_writeh (uint32_t addr, uint16_t *data, int len)
+int flexsoc_writeh (uint32_t addr, const uint16_t *data, int len)
 {
   return flexsoc_write (2, addr, (const uint8_t *)data, len);
 }
 
-int flexsoc_writeb (uint32_t addr, uint8_t *data, int len)
+int flexsoc_writeb (uint32_t addr, const uint8_t *data, int len)
 {
   return flexsoc_write (1, addr, (const uint8_t *)data, len);
+}
+
+uint32_t flexsoc_reg_read (uint32_t addr)
+{
+  int rv;
+  uint32_t val;
+  rv = flexsoc_readw (addr, &val, 1);
+  if (rv)
+    err ("Reg read failed: %08X", addr);
+  return val;
+}
+
+void flexsoc_reg_write (uint32_t addr, const uint32_t data)
+{
+  int rv;
+  rv = flexsoc_writew (addr, &data, 1);
+  if (rv)
+    err ("Reg write failed: %08X", addr);
+}
+
+void flexsoc_register (recv_cb_t cb)
+{
+  recv_cb = cb;
+}
+
+void flexsoc_unregister (void)
+{
+  recv_cb = NULL;
 }

@@ -92,7 +92,7 @@ int main (int argc, char **argv)
     err ("Must pass interface");
 
   // Open interface to flexsoc
-  rv = flexsoc_open (argv[1], NULL);
+  rv = flexsoc_open (argv[1]);
   if (rv)
     err ("Failed to open: %s", argv[1]);
 

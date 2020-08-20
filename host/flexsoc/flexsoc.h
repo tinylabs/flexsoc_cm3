@@ -15,7 +15,7 @@
 typedef void (*recv_cb_t) (uint8_t *buf, int len);
 
 // Open/close flexsoc
-int flexsoc_open (char *id, recv_cb_t recv_cb);
+int flexsoc_open (char *id);
 void flexsoc_close (void);
 
 //
@@ -27,8 +27,16 @@ void flexsoc_send (const uint8_t *buf, int len);
 int flexsoc_readw (uint32_t addr, uint32_t *data, int len);
 int flexsoc_readh (uint32_t addr, uint16_t *data, int len);
 int flexsoc_readb (uint32_t addr, uint8_t  *data, int len);
-int flexsoc_writew (uint32_t addr, uint32_t *data, int len);
-int flexsoc_writeh (uint32_t addr, uint16_t *data, int len);
-int flexsoc_writeb (uint32_t addr, uint8_t  *data, int len);
+int flexsoc_writew (uint32_t addr, const uint32_t *data, int len);
+int flexsoc_writeh (uint32_t addr, const uint16_t *data, int len);
+int flexsoc_writeb (uint32_t addr, const uint8_t  *data, int len);
+
+// Simplified register access
+uint32_t flexsoc_reg_read (uint32_t addr);
+void flexsoc_reg_write (uint32_t addr, const uint32_t data);
+
+// Register fn pointer with slave interface
+void flexsoc_register (recv_cb_t cb);
+void flexsoc_unregister (void);
 
 #endif /* FLEXSOC_H */

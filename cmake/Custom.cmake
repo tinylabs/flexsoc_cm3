@@ -111,7 +111,7 @@ else( NOT CROSSCOMPILING )
   # Create test
   function( hw_test NAME SOURCES)
     add_executable( ${NAME} ${SOURCES} ${ARGN} )
-    target_link_libraries( ${NAME} flexsoc test )
+    target_link_libraries( ${NAME} flexsoc target test )
     add_test(
       NAME ${NAME}
       COMMAND ${PROJECT_SOURCE_DIR}/test/scripts/hw_test.sh ${VERILATOR_SIM} $<TARGET_FILE:${NAME}> ${FLEXSOC_HW} )    

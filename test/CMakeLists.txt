@@ -15,7 +15,7 @@ hw_test( test-latency latency.cpp )
 hw_test( test-throughput throughput.cpp )
 #hw_test( io_test io_test.cpp )
 
-#set_target_properties( test-throughput PROPERTIES COMPILE_FLAGS "-O0 -ggdb")
+#set_target_properties( test-latency PROPERTIES COMPILE_FLAGS "-O0 -ggdb")
 #set_target_properties( io_test PROPERTIES COMPILE_FLAGS "-O0 -ggdb")
 
 # Finalize testing
