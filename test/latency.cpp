@@ -15,7 +15,7 @@
 
 #define SEED  0xdeadbeef
 #define COUNT 20
-#define ADDR  0x20000000
+#define ADDR  0x00000000
 
 // One way host <=> target latency
 static unsigned long master_latency_ns;

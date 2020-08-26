@@ -6,25 +6,24 @@
  *  2020
  **/
 
-module fpga_top 
+module arty_top
   #(
     parameter XILINX_ENC_CM3       = 0,
     parameter ROM_SZ               = 0,
     parameter RAM_SZ               = 0,
     parameter ROM_FILE             = ""
     )(
-      input       CLK_100M,
-      input       RESETn,
+      input         CLK_100M,
+      input         RESET,
       // JTAG/SWD pins
-      input       TCK_SWDCLK,
-      input       TDI,
-      inout       TMS_SWDIO,
-      output      TDO,
+      input         TCK_SWDCLK,
+      input         TDI,
+      inout         TMS_SWDIO,
+      output        TDO,
       // UART to host
-      input       UART_RX,
-      output      UART_TX
+      input         UART_RX,
+      output        UART_TX
       );
-
 
    // Clocks and PLL
    logic     hclk, transport_clk;
@@ -124,22 +123,24 @@ module fpga_top
    endgenerate
 
    // Generate reset logic from pushbutton/pll
-   logic               poreset_n;
-   logic [7:0]         reset_ctr;
+   logic [3:0]         reset_ctr;
+   initial reset_ctr <= 'hf;
+   
    always @(posedge hclk)
      begin
-        if (!RESETn | !hpll_locked | !tpll_locked)
-          reset_ctr <= 'hff;
+        if (RESET | !hpll_locked | !tpll_locked)
+          reset_ctr <= 'hf;
         else if (reset_ctr)
-          reset_ctr = reset_ctr - 1;
+          reset_ctr <= reset_ctr - 1;
      end
-   assign poreset_n = reset_ctr ? 1'b0 : 1'b1;
+   assign poreset_n = (reset_ctr != 0) ? 1'b0 : 1'b1;
    
-   // Inferred BUFIO on SWDIO
+   // Explicit IOBUF
    logic               swdoe, swdout;
-   assign TMS_SWDIO = swdoe ? swdout : 1'bz;
-
-   // Instantiate soc
+   logic               swdin, swdin_buf;
+   IOBUF swdio_IOBUF (.IO (TMS_SWDIO), .I (swdout), .O (swdin), .T (!swdoe));
+   
+   // Instantiate SoC
    flexsoc_cm3
      #(
        .XILINX_ENC_CM3       (XILINX_ENC_CM3),
@@ -153,12 +154,12 @@ module fpga_top
           .PORESETn      (poreset_n),
           .TCK_SWDCLK    (TCK_SWDCLK),
           .TDI           (TDI),
-          .TMS_SWDIN     (TMS_SWDIO),
+          .TMS_SWDIN     (swdin),
           .TDO           (TDO),
           .SWDOUT        (swdout),
           .SWDOUTEN      (swdoe),
           .UART_TX       (UART_TX),
           .UART_RX       (UART_RX)
           );
-
-endmodule // fpga_top
+               
+endmodule // arty_top

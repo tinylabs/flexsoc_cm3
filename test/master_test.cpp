@@ -12,6 +12,7 @@
 #include "err.h"
 
 #define SEED 0xdeadbeef
+#define ADDR 0x0
 
 static int write_test (void)
 {
@@ -26,15 +27,15 @@ static int write_test (void)
     dat[i] = rand32 (i ? &dat[i-1] : &seed);
 
   // Write word data
-  if (flexsoc_writew (0x20000000, dat, 4))
+  if (flexsoc_writew (ADDR, dat, 4))
     return -1;
 
   // Write hwrd data
-  if (flexsoc_writeh (0x20000010, dath, 8))
+  if (flexsoc_writeh (ADDR + 0x10, dath, 8))
     return -1;
   
   // Write word data
-  if (flexsoc_writeb (0x20000020, datb, 16))
+  if (flexsoc_writeb (ADDR + 0x20, datb, 16))
     return -1;
 
   return 0;
@@ -56,7 +57,7 @@ static int read_test (void)
 
   // Read word data
   memset (dat, 0, sizeof (dat));
-  if (flexsoc_readw (0x20000000, dat, 4))
+  if (flexsoc_readw (ADDR, dat, 4))
     return -1;
 
   // Verify data
@@ -65,7 +66,7 @@ static int read_test (void)
 
   // Read hwrd data
   memset (dat, 0, sizeof (dat));
-  if (flexsoc_readh (0x20000010, dath, 8))
+  if (flexsoc_readh (ADDR + 0x10, dath, 8))
     return -1;
 
   // Verify data
@@ -74,7 +75,7 @@ static int read_test (void)
 
   // Read word data
   memset (dat, 0, sizeof (dat));
-  if (flexsoc_readb (0x20000020, datb, 16))
+  if (flexsoc_readb (ADDR + 0x20, datb, 16))
     return -1;
 
   // Verify data

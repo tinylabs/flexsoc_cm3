@@ -31,7 +31,7 @@ int TCPTransport::Open (char *id)
 {
   uint16_t port = DEFAULT_PORT;
   char *pstr;
-  int i = 0;
+  int flags, i = 0;
   
   // Only ipv4 will have . separator
   if (strchr (id, '.'))
@@ -97,8 +97,12 @@ int TCPTransport::Open (char *id)
       return -1;
   }
 
+  // Set as non-blocking
+  flags = fcntl (sockfd, F_GETFL, 0);
+  fcntl (sockfd, F_SETFL, flags | O_NONBLOCK);
+
   // Flush the socket
-  Flush ();
+  //Flush ();
 
   // Success
   return 0;
@@ -115,22 +119,15 @@ void TCPTransport::Close (void)
 
 void TCPTransport::Flush (void)
 {
-  int rv, flags;
+  int rv;
   uint8_t buf[1];
 
   // Flush any buffers
   fsync (sockfd);
 
-  // Set as non-blocking
-  flags = fcntl (sockfd, F_GETFL, 0);
-  fcntl (sockfd, F_SETFL, flags | O_NONBLOCK);
-
   do {
     rv = read (sockfd, buf, 1);
   } while (rv > 0);
-
-  // Change back to blocking
-  fcntl (sockfd, F_SETFL, flags);
 }
 
 int TCPTransport::Read (uint8_t *buf, int len)
@@ -139,13 +136,13 @@ int TCPTransport::Read (uint8_t *buf, int len)
 
   // Grab lock - the entire read must be atomic
   pthread_mutex_lock (&rlock);
-  
+
   // Read from socket
   rv = read (sockfd, buf, len);
 
   // Release lock
   pthread_mutex_unlock (&rlock);
-  return (rv == -1) ? DEVICE_NOTAVAIL : rv;
+  return (rv == -1) ? 0 : rv;
 }
 
 int TCPTransport::Write (const uint8_t *buf, int len)
@@ -160,5 +157,5 @@ int TCPTransport::Write (const uint8_t *buf, int len)
 
   // Release lock
   pthread_mutex_unlock (&wlock);
-  return (rv == -1) ? DEVICE_NOTAVAIL : rv;
+  return (rv == -1) ? 0 : rv;
 }

@@ -14,21 +14,21 @@ module flexsoc_cm3
     parameter ROM_FILE       = ""
   ) (
      // Clock and reset
-     input  CLK,
-     input  PORESETn,
-     input  TRANSPORT_CLK,
+     input         CLK,
+     input         PORESETn,
+     input         TRANSPORT_CLK,
      
      // JTAG/SWD
-     input  TCK_SWDCLK,
-     input  TDI,
-     input  TMS_SWDIN,
-     output TDO,
-     output SWDOUT,
-     output SWDOUTEN,
+     input         TCK_SWDCLK,
+     input         TDI,
+     input         TMS_SWDIN,
+     output        TDO,
+     output        SWDOUT,
+     output        SWDOUTEN,
 
      // Host interface
-     output UART_TX,
-     input  UART_RX
+     output        UART_TX,
+     input         UART_RX
    );
 
    // Implicit reset for autogen interconnect
@@ -299,7 +299,11 @@ module flexsoc_cm3
    cm3_core
      #(
        .XILINX_ENC_CM3  (XILINX_ENC_CM3),
-       .NUM_IRQ         (`IRQ_CNT)
+       .NUM_IRQ         (`IRQ_CNT),
+       .SINGLE_MEMORY   (0),
+       .CACHE_ENABLE    (0),
+       .ROM_SZ          (ROM_SZ),
+       .RAM_SZ          (RAM_SZ)
        )
      u_cm3 (
             // Clock and reset

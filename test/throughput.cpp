@@ -15,7 +15,7 @@
 
 #define SEED       0xdeadbeef
 #define BUFSZ_WORD (16*1024)/4
-#define ADDR       0x20000000
+#define ADDR       0x00000000
 
 static timespec diff(timespec start, timespec end)
 {

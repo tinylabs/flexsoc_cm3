@@ -7,10 +7,10 @@ filesets:
         depend:
             - cm3_core
             - ahb3lite_csr
-            - ahb3lite_memory
             - ahb3lite_host_master
             - ahb3lite_host_slave
             - ahb3lite_irq_slave
+            - ahb3lite_memory
             - fifo_arb
             - fifo
             - uart_fifo
@@ -21,10 +21,6 @@ filesets:
         depend:
             - cm3_full
             
-    fpga_top:
-        files:
-            - rtl/fpga_top.sv : {file_type : verilogSource}
-
     generator_deps:
         depend:
             - ahb3lite_intercon
@@ -41,7 +37,11 @@ filesets:
             - scripts/flexsoc_cm3.cfg
         file_type: user
             
-    arty:
+    arty_top:
+        files:
+            - rtl/arty_top.sv : {file_type : verilogSource}
+
+    arty_constraints:
         files:
             - arty/clocks.xdc : {file_type : xdc}
             - arty/pins.xdc   : {file_type : xdc}
@@ -124,14 +124,14 @@ targets:
         <<: *base
         description: Synthesize flexsoc_cm3 for Digilent Arty-A35T
         default_tool: vivado
-        filesets_append: [fpga_top, cm3_full_dep, arty]
+        filesets_append: [arty_top, cm3_full_dep, arty_constraints]
         parameters: [XILINX_ENC_CM3=1,ROM_SZ,RAM_SZ]
-        toplevel: [fpga_top]
+        toplevel: [arty_top]
         tools:
             vivado:
                 part: xc7a35ticsg324-1L
                 #vivado-settings: /opt/xilinx/Vivado/2020.1/settings64.sh
-        
+
 parameters:
     XILINX_ENC_CM3:
         datatype: int
@@ -154,4 +154,4 @@ parameters:
         default: 16384
         description: Set size of RAM
         paramtype: vlogparam
-        
+                

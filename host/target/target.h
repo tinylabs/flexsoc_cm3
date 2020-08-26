@@ -39,7 +39,6 @@ class Target {
   void SlaveRegister (void (*cb) (uint8_t *, int));
   void SlaveUnregister (void);
   
-  // Access IRQs
   // Trigger IRQ pulse
   void IRQ (uint8_t irq);
   // Set level IRQ
