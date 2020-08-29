@@ -6,7 +6,7 @@ set_property -dict { PACKAGE_PIN D9    IOSTANDARD LVCMOS33 } [get_ports { RESET 
 set_property -dict { PACKAGE_PIN P17   IOSTANDARD LVCMOS33 } [get_ports { TCK_SWDCLK }];  # IO13
 set_property -dict { PACKAGE_PIN R17   IOSTANDARD LVCMOS33 } [get_ports { TDI }];         # IO12
 set_property -dict { PACKAGE_PIN U18   IOSTANDARD LVCMOS33 } [get_ports { TDO }];         # IO11
-set_property -dict { PACKAGE_PIN V17   IOSTANDARD LVCMOS33 } [get_ports { TMS_SWDIO }];   # IO10
+set_property -dict { PACKAGE_PIN V16   IOSTANDARD LVCMOS33 } [get_ports { TMS_SWDIO }];   # 
 
 # UART
 set_property -dict { PACKAGE_PIN D10   IOSTANDARD LVCMOS33 } [get_ports { UART_TX }]; # FPGA->HOST
@@ -24,3 +24,7 @@ set_input_delay  -clock [get_clocks hclk] -add_delay $untimed_id [get_ports RESE
 set_false_path -from [get_ports UART_RX]
 set_output_delay -clock [get_clocks transport_clk] -add_delay $untimed_id [get_ports UART_TX]
 #set_input_delay -clock [get_clocks transport_clk] -add_delay $untimed_id [get_ports UART_RX]
+
+# Increase JTAG speed
+set_property BITSTREAM.GENERAL.COMPRESS TRUE [current_design]
+set_property BITSTREAM.CONFIG.CONFIGRATE 33 [current_design]

@@ -8,7 +8,8 @@ add_definitions( -DHOST_INTERFACE=1 )
 
 # Create target
 add_library( target
-  target.cpp
+  PluginTarget.cpp
+  Target.cpp
   )
 
 # Enable debug

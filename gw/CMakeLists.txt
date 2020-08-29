@@ -2,4 +2,4 @@
 # Fusesoc wrapper for HDL targets
 #
 
-gw_target( arty vivado )
+gw_target( arty )

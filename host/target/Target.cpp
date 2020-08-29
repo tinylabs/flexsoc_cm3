@@ -5,14 +5,15 @@
  *  Tiny Labs Inc
  *  2020
  */
+#include <unistd.h>
 
-#include "target.h"
+#include "Target.h"
 #include "flexsoc.h"
+#include "hwreg.h"
 #include "err.h"
 
-// These must be updated if HDL map changes
-#define CSR_BASE  0xE0000000
-#define IRQ_BASE  0xE0000100
+// Singleton pointer
+Target *Target::inst = NULL;
 
 Target::Target (char *id)
 {
@@ -33,15 +34,27 @@ Target::Target (char *id)
 Target::~Target ()
 {
   // Disable slave interface
-  SlaveEn (false);
-  SlaveUnregister ();
-  
+  //SlaveEn (false);
+  //SlaveUnregister ();
+
   // Delete CSR classes
   delete irq;
   delete csr;
-  
+    
   // Close comm link
   flexsoc_close ();
+}
+
+Target *Target::Ptr (char *id)
+{
+  if (!inst) 
+    inst =  new Target (id);
+  return inst;
+}
+
+Target *Target::Ptr (void)
+{
+  return inst;
 }
 
 // General APIs

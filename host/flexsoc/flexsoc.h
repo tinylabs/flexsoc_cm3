@@ -39,4 +39,8 @@ void flexsoc_reg_write (uint32_t addr, const uint32_t data);
 void flexsoc_register (recv_cb_t cb);
 void flexsoc_unregister (void);
 
+// Read/write return code
+int flexsoc_read_returnval (void);
+void flexsoc_write_returnval (int val);
+
 #endif /* FLEXSOC_H */

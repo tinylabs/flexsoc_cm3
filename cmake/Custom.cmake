@@ -2,9 +2,10 @@
 # Custom cmake functions to support this project
 #
 # Set test directory
-set( TEST_DIR ${PROJECT_SOURCE_DIR}/test )
   
 if( CMAKE_CROSSCOMPILING )
+
+  set( TEST_ARM_DIR ${PROJECT_SOURCE_DIR}/test/arm )
   
   function( target_bin TARGET SOURCES )
     
@@ -12,12 +13,12 @@ if( CMAKE_CROSSCOMPILING )
     add_executable( ${TARGET} ${SOURCES} ${ARGN} )
     
     # Link to common lib
-    target_link_libraries( ${TARGET} common c )
+    target_link_libraries( ${TARGET} arm c )
 
     # Set link properties
     set_target_properties( ${TARGET} PROPERTIES
       LINK_FLAGS
-      "-Wl,-zmax-page-size=4 -T ${TEST_DIR}/arm/linker.ld -Wl,-Map=${TARGET}.map"
+      "-Wl,-zmax-page-size=4 -T ${TEST_ARM_DIR}/linker.ld -Wl,-Map=${TARGET}.map"
       COMPILE_FLAGS
       "-O0 -ggdb" )
     
@@ -26,7 +27,7 @@ if( CMAKE_CROSSCOMPILING )
       DEPENDS ${TARGET}
       COMMENT "Creating binary: ${TARGET}.bin"
       COMMAND arm-none-eabi-objcopy -O binary ${TARGET} ${TARGET}.bin
-      COMMAND cmake -E copy $<TARGET_FILE:${TARGET}>.bin ${TEST_DIR}/arm/
+      COMMAND cmake -E copy $<TARGET_FILE:${TARGET}>.bin ${TEST_ARM_DIR}/bin/
       )
     
     # Cleanup
@@ -50,11 +51,11 @@ else( NOT CROSSCOMPILING )
       SUFFIX ".plg" )
     
     # Link against plugin for helper fns
-    target_link_libraries( ${NAME} plugin )
+    target_link_libraries( ${NAME} pluginhelper )
     
   endfunction( plugin )
 
-  macro( gw_target NAME TOOL )
+  macro( gw_target NAME )
     add_custom_target( ${NAME}
       COMMENT "Generating gateware for ${NAME}..."
       COMMAND ${FUSESOC_EXECUTABLE} --target=${NAME} ${CMAKE_PROJECT_NAME}
@@ -86,7 +87,7 @@ else( NOT CROSSCOMPILING )
       set( FLEXSOC_HW "127.0.0.1:5555" )
       message( STATUS "Running on simulator: ${FLEXSOC_HW}" )
       # TODO: codify version if possible
-      set( VERILATOR_SIM build/${CMAKE_PROJECT_NAME}_0.1/sim-verilator/V${CMAKE_PROJECT_NAME} )
+      set( VERILATOR_SIM ${PROJECT_BINARY_DIR}/test/build/${CMAKE_PROJECT_NAME}_0.1/sim-verilator/V${CMAKE_PROJECT_NAME} )
       add_custom_command(
         OUTPUT ${VERILATOR_SIM}
         COMMENT "Generating verilated sim for ${CMAKE_PROJECT_NAME}"
@@ -116,5 +117,12 @@ else( NOT CROSSCOMPILING )
       NAME ${NAME}
       COMMAND ${PROJECT_SOURCE_DIR}/test/scripts/hw_test.sh ${VERILATOR_SIM} $<TARGET_FILE:${NAME}> ${FLEXSOC_HW} )    
   endfunction( hw_test )
-  
+
+  # Create CLI tests
+  function( cli_test NAME SYSMAP BINARY EXT )
+    add_test(
+      NAME ${NAME}
+      COMMAND ${PROJECT_SOURCE_DIR}/test/scripts/cli_test.sh ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/test/map/${SYSMAP} ${PROJECT_SOURCE_DIR}/test/arm/bin/${BINARY} ${FLEXSOC_HW} ${EXT} ${VERILATOR_SIM}
+      )
+  endfunction( cli_test )
 endif()

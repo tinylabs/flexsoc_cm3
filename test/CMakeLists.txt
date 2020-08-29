@@ -2,21 +2,24 @@
 # System level tests
 #
 
-# Setup test framework
-test_setup()
+if( CMAKE_CROSSCOMPILING )
 
-# Create test library
-add_library( test common.cpp )
+  # Add ARM tests
+  # compile by invoking cmake -DBUILD_ARM=1 ../ from fresh build_arm directory
+  add_subdirectory( arm )
 
-# Add tests here...
-hw_test( test-master master_test.cpp)
-hw_test( test-slave slave_test.cpp )
-hw_test( test-latency latency.cpp )
-hw_test( test-throughput throughput.cpp )
-#hw_test( io_test io_test.cpp )
+else( NOT CMAKE_CROSSCOMPILING )
+  
+  # Setup test framework
+  test_setup()
+  
+  # Add hardware tests
+  add_subdirectory( hw )
 
-#set_target_properties( test-latency PROPERTIES COMPILE_FLAGS "-O0 -ggdb")
-#set_target_properties( io_test PROPERTIES COMPILE_FLAGS "-O0 -ggdb")
+  # Add cli tests
+  add_subdirectory( cli )
+  
+  # Finalize testing
+  test_finalize()
 
-# Finalize testing
-test_finalize()
+endif()

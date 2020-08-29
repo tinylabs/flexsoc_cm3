@@ -45,6 +45,9 @@ static pthread_mutex_t write_lock, api_lock;
 // Callbacks for plugin interface
 static recv_cb_t recv_cb = NULL;
 
+// Return code - just store
+static int returncode = 0;
+
 // Must match fifo_host_pkg.sv
 typedef enum {
               FIFO_D0  = 0,
@@ -119,7 +122,7 @@ static void *flexsoc_listen (void *arg)
 
     // Read from target interface
     rv = dev->Read (pkt, 1);
-    
+
     // Device closed - kill thread
     if ((rv == DEVICE_NOTAVAIL) || kill_thread)
       return NULL;
@@ -235,7 +238,7 @@ void flexsoc_close (void)
   
   // Wait for thread
   pthread_join (read_tid, NULL);
-
+  
   // Close transport
   if (dev)
     dev->Close ();
@@ -263,7 +266,7 @@ static void buf_to_host16 (uint8_t *host, const uint8_t *buf)
   *((uint16_t *)host) = ntohs (*((uint16_t *)buf));
 }
 
-static void buf_to_host32 (uint8_t *host, const uint8_t * buf)
+static void buf_to_host32 (uint8_t *host, const uint8_t *buf)
 {
   *((uint32_t *)host) = ntohl (*((uint32_t *)buf));
 }
@@ -536,4 +539,13 @@ void flexsoc_register (recv_cb_t cb)
 void flexsoc_unregister (void)
 {
   recv_cb = NULL;
+}
+
+int flexsoc_read_returnval (void)
+{
+  return returncode;
+}
+void flexsoc_write_returnval (int val)
+{
+  returncode = val;
 }

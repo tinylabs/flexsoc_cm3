@@ -10,19 +10,28 @@
 #define TARGET_H
 
 #include <stdint.h>
+#include <stdlib.h>
 
 #include "flexsoc_csr.h"
 #include "irq_slave.h"
 
 class Target {
 
- private:
+  static Target *inst;
+
+private:
   flexsoc_csr *csr;
   irq_slave *irq;
+  Target (char *id);
   
  public:
-  Target (char *id);
-  ~Target ();
+
+  // Get singleton instance
+  static Target *Ptr (void);
+  static Target *Ptr (char *id);
+
+  // Destructor
+  virtual ~Target ();
 
   // General APIs
   void ReadW (uint32_t addr, uint32_t *data, uint32_t cnt);

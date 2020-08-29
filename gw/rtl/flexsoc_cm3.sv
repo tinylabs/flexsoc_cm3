@@ -51,7 +51,7 @@ module flexsoc_cm3
    // Initialize SoC registers
    assign cpu_reset_i = ~PORESETn ? 1'b1 : cpu_reset_o;
    assign slave_en_i = slave_en_o;
-   assign flexsoc_id = 32'hf1e850c1;
+   assign flexsoc_id = 32'hf1ec50c1;
    assign memory_id = (ROM_SZ >> 10) | ((RAM_SZ >> 10) << 16);
    
    // CPU reset controller

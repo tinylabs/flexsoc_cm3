@@ -40,9 +40,7 @@ if( NOT CMAKE_CROSSCOMPILING )
   # Add gateware wrappers
   add_subdirectory( gw )
   
-  # Add tests
-  add_subdirectory( test )
 endif()
 
 # Add tests
-#add_subdirectory( test )
+add_subdirectory( test )
