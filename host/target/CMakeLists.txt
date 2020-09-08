@@ -19,6 +19,6 @@ add_library( target
 gen_csr( target )
 
 # Link to comm layer
-target_link_libraries( target flexsoc )
+target_link_libraries( target log flexsoc )
 
 

@@ -17,6 +17,7 @@
 #include "plugini.h"
 #include "ll.h"
 #include "err.h"
+#include "log.h"
 
 #include "sysmap_parse.h"
 
@@ -125,7 +126,7 @@ void *plugin_load (const char *name, const char *args, plugin_type_t *type)
   // Resolve plugin structure symbol
   plugin = (plugin_t *)dlsym  (shlib, "__plugin");
   if ((err = dlerror ()) != NULL) {
-    printf ("Couldn't locate plugin syms: %s (%s)\n", name, err);
+    log (LOG_ERR, "Couldn't locate plugin syms: %s (%s)\n", name, err);
     return NULL;
   }
 
@@ -150,12 +151,12 @@ void *plugin_load (const char *name, const char *args, plugin_type_t *type)
     *type = plugin->type;
   
   // Create plugin
-  //printf ("Loaded plugin: %s (%s)\n", name, plugin->version);
+  log (LOG_DEBUG, "Loaded plugin: %s [%s]", name, plugin->version);
   return plugin->create (args);
 
   // Failed to load plugin
  fail:
-  printf ("Failed to load plugin: %s\n", name);
+  err ("Failed to load plugin: %s", name);
   return NULL;
 }
 
@@ -231,13 +232,13 @@ static void plugin_handler (uint8_t *buf, int len)
     addr = ntohl (*((uint32_t *)&buf[1]));
   }
 
-  // Debug only
-  printf ("[%c%c] %08X\n",
-          write ? 'W' : 'R',
-          size == SZ_BYTE ? 'B' :
-          (size == SZ_HWRD ? 'H' : 'W'),
-          addr);
-
+  // Transaction trace
+  log (LOG_TRACE, "[%c%c] %08X",
+       write ? 'W' : 'R',
+       size == SZ_BYTE ? 'B' :
+       (size == SZ_HWRD ? 'H' : 'W'),
+       addr);
+  
   // Find matching plugin
   for (i = 0; i < pcnt; i++) {
     base = plugin[i]->Base();
@@ -250,7 +251,7 @@ static void plugin_handler (uint8_t *buf, int len)
 
   // Check if not found
   if (i == pcnt) {
-    printf ("Err: Unmatched addr: 0x%08X\n", addr);
+    log (LOG_ERR, "Err: Unmatched addr: 0x%08X\n", addr);
     resp[0] = (write << 3) | FAIL;
     target->SlaveSend (resp, 1);
     return;

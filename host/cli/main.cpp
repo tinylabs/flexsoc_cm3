@@ -10,7 +10,7 @@
 
 #include "flexsoc_cm3.h"
 #include "err.h"
-
+#include "log.h"
 
 // Argument storage
 static args_t args;
@@ -42,6 +42,11 @@ static int parse_opts (int key, char *arg, struct argp_state *state)
       }
       break;
 
+    case 'v':
+      if (arg)
+        args.verbose = strtoul (arg, NULL, 0);
+      break;
+      
     case 'm':
       if (arg) {
         args.map = (char *)malloc (strlen (arg) + 1);
@@ -100,7 +105,8 @@ int main (int argc, char **argv)
   
   // Clear args
   memset (&args, 0, sizeof (args));
-
+  args.verbose = LOG_NORMAL;
+  
   // Add system path to plugin path
   
   // Parse args

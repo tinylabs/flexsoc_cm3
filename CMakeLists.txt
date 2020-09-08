@@ -29,7 +29,7 @@ if( NOT CMAKE_CROSSCOMPILING )
   find_package( fusesoc REQUIRED )
 
   # Include common defs
-  include_directories( common host/flexsoc host/target )
+  include_directories( common host/flexsoc host/target host/log )
 
   # Include generated CSRs
   include_directories( ${CMAKE_BINARY_DIR}/generated )

@@ -19,6 +19,7 @@
 
 #include "Target.h"
 #include "PluginTarget.h"
+#include "log.h"
 
 /**
  *  The system maps is specified in the following format:
@@ -110,7 +111,8 @@ int sysmap_parse (const char *map, BusPeripheral ***bp, int *cnt)
   string line;
   
   // Print out map header
-  cout << "Virtual Map" << endl << setfill ('-') << setw (11) << "-" << endl << setfill (' ');
+  log (LOG_NORMAL, "Virtual Map");
+  log (LOG_NORMAL, "-----------");
 
   // Loop over each line
   while (getline (file, line)) {
@@ -145,20 +147,20 @@ int sysmap_parse (const char *map, BusPeripheral ***bp, int *cnt)
       addr = tokens[0].substr (pos + 1, tokens[0].length ());
     }
     else {
-      cout << "Invalid line [" << line << "]" << endl;
+      log (LOG_ERR, "Invalid line [%s]", line);
       return -1;
     }
 
     // Analyze parts
     if ((tokens.size () < 2) || (tokens.size () > 4)) {
-      cout << "Invalid line [" << line << "]" << endl;
+      log (LOG_ERR, "Invalid line [%s]", line);
       return -1;
     }
 
     // Look for plugin
     obj = plugin_load (plugin.c_str (), tokens[1].c_str(), &type);
     if (!obj) {
-      cout << "Plugin not found: " << plugin << endl;
+      log (LOG_ERR, "Plugin not found: %s", plugin);
       return -1;
     }
 
@@ -184,9 +186,8 @@ int sysmap_parse (const char *map, BusPeripheral ***bp, int *cnt)
       (*bp)[(*cnt)++] = p;
 
       // Print out
-      cout << left << setbase (16) << uppercase <<
-        "  " << p->Base() << ": " << setw (15) << plugin;
-      cout << setw (20) << tokens[1] << endl;
+      log (LOG_NORMAL, "  %08X: %s", p->Base(), plugin.c_str());
+      log (LOG_DEBUG, "    %s", tokens[1].c_str());
     }
     // Handle non busperipheral types
     else {
@@ -194,9 +195,6 @@ int sysmap_parse (const char *map, BusPeripheral ***bp, int *cnt)
     }
   }
 
-  // Newline
-  //cout << endl;
-  
   // Close file
   file.close ();  
   return 0;

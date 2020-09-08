@@ -13,7 +13,7 @@ add_library( flexsoc
   Cbuf.cpp
   )
 
-target_link_libraries( flexsoc pthread ${LIBFTDI_LIBRARIES} )
+target_link_libraries( flexsoc log pthread ${LIBFTDI_LIBRARIES} )
 
 # Enable debug
 #set_target_properties( flexsoc PROPERTIES COMPILE_FLAGS "-O0 -ggdb" )

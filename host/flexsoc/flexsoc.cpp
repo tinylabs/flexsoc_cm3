@@ -14,8 +14,7 @@
 #include "flexsoc.h"
 #include "err.h"
 #include "Cbuf.h"
-
-#define DEBUG         0
+#include "log.h"
 
 // Read transfer size
 #define READ_SEND_SZ   (180)
@@ -30,7 +29,7 @@
 
 // Local variables
 static Transport *dev = NULL;
-static pthread_t read_tid;
+static pthread_t read_tid, slave_tid;
 static bool kill_thread = false;
 
 // Circular buffer
@@ -40,13 +39,17 @@ static Cbuf *mbuf;
 static uint8_t *tbuf[2];
 
 // Protect outgoing writes
-static pthread_mutex_t write_lock, api_lock; 
+static pthread_mutex_t write_lock, api_lock, slave_lock; 
 
 // Callbacks for plugin interface
 static recv_cb_t recv_cb = NULL;
 
 // Return code - just store
 static int returncode = 0;
+
+// Slave packet data
+static uint8_t slave_pkt[9];
+static int slave_sz;
 
 // Must match fifo_host_pkg.sv
 typedef enum {
@@ -105,11 +108,28 @@ static uint8_t cmd2payload (uint8_t cmd)
 static void dump (const char *str, const uint8_t *data, int len)
 {
   int i;
-  printf ("[%d] %s ", len, str);
+  log_nonl (LOG_TRANS, "[%d] %s ", len, str);
   for (i = 0; i < len; i++) {
-    printf ("%02X", data[i]);
+    log_nonl (LOG_TRANS, "%02X", data[i]);
   }
-  printf ("\n");
+  log (LOG_TRANS, "");
+}
+
+static void *flexsoc_slave (void *arg)
+{
+  while (1) {
+
+    // Wait for transaction
+    pthread_mutex_lock (&slave_lock);
+
+    // Check if thread is killed
+    if (kill_thread)
+      return NULL;
+
+    // Process transaction
+    if (recv_cb)
+      recv_cb (slave_pkt, slave_sz);
+  }
 }
 
 static void *flexsoc_listen (void *arg)
@@ -124,9 +144,11 @@ static void *flexsoc_listen (void *arg)
     rv = dev->Read (pkt, 1);
 
     // Device closed - kill thread
-    if ((rv == DEVICE_NOTAVAIL) || kill_thread)
+    if ((rv == DEVICE_NOTAVAIL) || kill_thread) {
+      // Unblock slave mutex and return
+      pthread_mutex_unlock (&slave_lock);
       return NULL;
-
+    }
     // Write to buffer
     if (rv > 0) {
       int written = 0, sz = rv;
@@ -142,7 +164,7 @@ static void *flexsoc_listen (void *arg)
       }
 
       // Dump if debug
-      if (DEBUG) dump ("<=", pkt, sz + 1);
+      dump ("<=", pkt, sz + 1);
     
       // Copy to mbuf or dispatch to slave
       if (pkt[0] & CMD_INTERFACE_MASTER) {
@@ -154,8 +176,14 @@ static void *flexsoc_listen (void *arg)
         }
       }
       // Dispatch to slave
-      else if (recv_cb) {
-        recv_cb (pkt, sz + 1);
+      else {
+
+        // Copy to slave packet
+        memcpy (slave_pkt, pkt, sz + 1);
+        slave_sz = sz + 1;
+
+        // Unblock slave thread
+        pthread_mutex_unlock (&slave_lock);
       }
     }
   }
@@ -180,6 +208,10 @@ int flexsoc_open (char *id)
 
   // Create cirular buffer
   mbuf = new Cbuf (MBUF_SZ);
+
+  // Create slave lock and take lock
+  pthread_mutex_init (&slave_lock, NULL);
+  pthread_mutex_lock (&slave_lock);
   
   // Create write lock (mux master/slave)
   pthread_mutex_init (&write_lock, NULL);
@@ -192,6 +224,11 @@ int flexsoc_open (char *id)
   tbuf[1] = (uint8_t *)malloc (WRITE_SEND_SZ);
   if (!tbuf[0] || (!tbuf[1]))
     err ("Failed to malloc tbuf");
+
+  // Create slave thread
+  rv = pthread_create (&slave_tid, NULL, &flexsoc_slave, NULL);
+  if (rv)
+    err ("Failed to spawn flexsoc thread!");
 
   // Spin up thread to read transport
   rv = pthread_create (&read_tid, NULL, &flexsoc_listen, NULL);
@@ -208,7 +245,7 @@ void flexsoc_send (const uint8_t *buf, int len)
   // Lock write mutex
   pthread_mutex_lock (&write_lock);
   if (dev) {
-    if (DEBUG) dump ("=>", (uint8_t *)buf, len);
+    dump ("=>", (uint8_t *)buf, len);
     while (written < len) {
       rv = dev->Write (buf, len);
       if (rv < 0) {
@@ -236,8 +273,9 @@ void flexsoc_close (void)
   // Kill thread
   kill_thread = true;
   
-  // Wait for thread
+  // Wait for threads
   pthread_join (read_tid, NULL);
+  pthread_join (slave_tid, NULL);
   
   // Close transport
   if (dev)
@@ -276,12 +314,6 @@ static int read_process (uint8_t width, uint8_t *data, int rcnt)
   int i, read = 0;
   uint8_t rbuf[READ_RECV_SZ];
 
-  // Debug only
-  if (rcnt > READ_RECV_SZ) {
-    printf ("rcnt=%d READ_RECV_SZ=%d\n", rcnt, READ_RECV_SZ);
-    while (1) ;
-  }
-  
   // Read results
   flexsoc_recv (rbuf, rcnt);
   for (i = 0; i < (rcnt / (1 + width)); i++) {
@@ -309,12 +341,6 @@ static int write_process (int rcnt)
 {
   int i, written = 0;
   uint8_t rbuf[WRITE_RECV_SZ];
-
-  // Debug only
-  if (rcnt > WRITE_RECV_SZ) {
-    printf ("rcnt=%d READ_RECV_SZ=%d\n", rcnt, WRITE_RECV_SZ);
-    while (1) ;
-  }
 
   // Read results
   flexsoc_recv (rbuf, rcnt);

@@ -14,7 +14,7 @@ add_executable( flexsoc_cm3
   )
 
 # Link to comm lib
-target_link_libraries( flexsoc_cm3 target dl )
+target_link_libraries( flexsoc_cm3 log target dl )
 #set_target_properties( flexsoc_cm3 PROPERTIES COMPILE_FLAGS "-O0 -ggdb" )
 
 # Add builtin plugin subdirectory

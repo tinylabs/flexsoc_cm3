@@ -45,7 +45,7 @@ else( NOT CROSSCOMPILING )
     
     # Make sure our export structure doesn't get compiled out
     set_target_properties( ${NAME} PROPERTIES
-      COMPILE_FLAGS "-O0 -ggdb"
+#      COMPILE_FLAGS "-O0 -ggdb"
       LINK_FLAGS "-Wl,-entry=__plugin"
       PREFIX ""
       SUFFIX ".plg" )

@@ -12,6 +12,7 @@
 
 #include "Target.h"
 #include "flexsoc.h"
+#include "log.h"
 
 #include <signal.h>
 #include <stdio.h>
@@ -24,7 +25,7 @@ static int shutdown_flag = 0;
 static void shutdown (int sig)
 {
   signal (SIGINT, SIG_DFL);
-  printf ("Shutting down...\n");
+  log (LOG_NORMAL, "Shutting down...");
   shutdown_flag = 1;  
 }
 
@@ -78,6 +79,9 @@ int flexsoc_cm3 (args_t *args)
   char *device;
   int i;
 
+  // Init logging
+  log_init (args->verbose);
+
   // Copy device as it's modified inplace if simulator
   device = (char *)malloc (strlen (args->device + 1));
   strcpy (device, args->device);
@@ -88,13 +92,13 @@ int flexsoc_cm3 (args_t *args)
   // Read device_id
   devid = target->FlexsocID ();
   if ((devid >> 4) == 0xF1ec50c)
-    printf ("flexsoc v%d ", devid & 0xf);
+    log_nonl (LOG_NORMAL, "flexsoc v%d ", devid & 0xf);
   else
     err ("flexsoc not found!");
   
   // Get memory config
   memid = target->MemoryID ();
-  printf ("%dkB ROM/%dkB RAM [HW=%s]\n", memid & 0xffff, (memid >> 16), args->device);
+  log (LOG_NORMAL, "%dkB ROM/%dkB RAM [HW=%s]", memid & 0xffff, (memid >> 16), args->device);
   free (device);
   
   // Load binaries into memory
@@ -103,7 +107,7 @@ int flexsoc_cm3 (args_t *args)
     long size;
     
     // Read binary
-    printf ("Loading %s @ 0x%08X... ", args->load[i].name, args->load[i].addr);
+    log_nonl (LOG_NORMAL, "Loading %s @ 0x%08X... ", args->load[i].name, args->load[i].addr);
     data = read_bin (args->load[i].name, &size);
 
     // Write to target
@@ -116,7 +120,7 @@ int flexsoc_cm3 (args_t *args)
     target->ReadW (args->load[i].addr, verify, size/4);
     if (memcmp (data, verify, size))
       err ("FAIL");
-    printf ("OK\n");
+    log (LOG_NORMAL, "OK");
 
     // Free buffers
     free (verify);
