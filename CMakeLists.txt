@@ -1,21 +1,29 @@
 #
-# Oracle cmake support - Compile simulator or synthesize FPGA gateware
+# flexsoc_cm3 top-level cmake file
 # 
 # All rights reserved.
 # Tiny Labs Inc
-# 2019
+# 2019,2020
 #
 set( CMAKE_VERSION 3.2 )
 cmake_minimum_required( VERSION ${CMAKE_VERSION} )
 cmake_policy( VERSION ${CMAKE_VERSION} )
 set( CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
 
-# Create project
+# Setup toolchain
 set( CMAKE_TOOLCHAIN_FILE ARM-Toolchain )
+
+# Create project
 project( flexsoc_cm3 )
 
 # Enable languages
 enable_language( C CXX ASM )
+
+# Set install if not set
+if( CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT )
+  set( CMAKE_INSTALL_PREFIX /opt/flexsoc_cm3 CACHE PATH "" FORCE )
+endif()
+message( "INSTALL=${CMAKE_INSTALL_PREFIX}" )
 
 # Include custom functions
 include( Custom )
@@ -44,3 +52,17 @@ endif()
 
 # Add tests
 add_subdirectory( test )
+
+# Get version from git
+execute_process(COMMAND git log --pretty=format:%h -n 1
+                OUTPUT_VARIABLE FLEXSOC_VERSION
+                ERROR_QUIET)
+              
+# Configure pkg-config file
+#set( DEST_DIR ${CMAKE_INSTALL_PREFIX} )
+get_property( PRIVATE_LIBS GLOBAL PROPERTY PRIVATE_LIBS )
+configure_file( pkg-config/flexsoc_cm3.pc.in flexsoc_cm3.pc @ONLY )
+
+# Install pkg-config file
+install( FILES ${CMAKE_BINARY_DIR}/flexsoc_cm3.pc
+  DESTINATION /usr/share/pkgconfig )

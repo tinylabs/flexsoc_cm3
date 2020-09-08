@@ -108,10 +108,26 @@ int main (int argc, char **argv)
   args.verbose = LOG_NORMAL;
   
   // Add system path to plugin path
-  
+#if defined(INSTALL_PREFIX)
+  args.path = (char **)realloc (args.path, sizeof (char *) * (args.path_cnt + 1));
+  args.path[args.path_cnt] = (char *)malloc (strlen (INSTALL_PREFIX) + 1);
+  if (!args.path[args.path_cnt])
+    err ("Malloc failed!");
+  strcpy (args.path[args.path_cnt], INSTALL_PREFIX);
+  args.path_cnt++;
+#endif
+        
   // Parse args
   argp_parse (&flexsoc_cm3_argp, argc, argv, 0, 0, 0);
 
+  // Init logging
+  log_init (args.verbose);
+  
+  // Print out plugin paths
+  log (LOG_DEBUG, "Plugin paths:");
+  for (i = 0; i < args.path_cnt; i++)
+    log (LOG_DEBUG, "  %s", args.path[i]);
+  
   // Do work
   rv = flexsoc_cm3 (&args);
 

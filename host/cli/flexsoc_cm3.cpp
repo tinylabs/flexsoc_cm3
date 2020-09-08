@@ -79,9 +79,6 @@ int flexsoc_cm3 (args_t *args)
   char *device;
   int i;
 
-  // Init logging
-  log_init (args->verbose);
-
   // Copy device as it's modified inplace if simulator
   device = (char *)malloc (strlen (args->device + 1));
   strcpy (device, args->device);
