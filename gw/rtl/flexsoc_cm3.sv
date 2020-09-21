@@ -113,7 +113,7 @@ module flexsoc_cm3
                 .HCLK      (CLK),
                 .HRESETn   (PORESETn),
                 .HSEL      (ahb3_rom_HSEL),
-                .HADDR     (ahb3_rom_HADDR}),
+                .HADDR     (ahb3_rom_HADDR),
                 .HWDATA    (ahb3_rom_HWDATA),
                 .HRDATA    (ahb3_rom_HRDATA),
                 .HWRITE    (ahb3_rom_HWRITE),
