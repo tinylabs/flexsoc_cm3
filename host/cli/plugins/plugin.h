@@ -37,7 +37,7 @@ typedef struct {
     }                                                                   \
   }
 
-/* Plugin interface */
+// Plugin interface
 #define PLUGIN(typ, cls, ver)                       \
   OBJ_WRAPPER(cls)                                  \
   extern "C" { extern const plugin_t __plugin; }    \
@@ -46,6 +46,21 @@ typedef struct {
     .create = &cls##_create,                        \
     .type = typ,                                    \
   }
+
+
+
+// Helper macros
+// Register structure must be nameed reg_t
+//
+#include <stddef.h>
+typedef volatile uint32_t REG32;
+typedef volatile uint16_t REG16;
+typedef volatile uint8_t  REG8;
+#define REG_ADDR(x)  offsetof (reg_t, x)
+#define REG_UPDATE(x, data, mask)  reg.x &= ~mask; reg.x |= data & mask;
+#define CONCAT_IMPL( x, y ) x##y
+#define CONCAT( x, y )      CONCAT_IMPL( x, y )
+#define REG_PAD(a1, a2) uint8_t CONCAT(pad, __COUNTER__)[a2-a1]
 
 #endif /* PLUGIN_H */
 

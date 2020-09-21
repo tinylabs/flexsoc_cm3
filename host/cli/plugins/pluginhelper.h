@@ -16,7 +16,9 @@ extern "C" {
 
   // Parse args string and return val
   int plugin_parse_uint (const char *args, const char *key, uint32_t *val);
-
+  int plugin_parse_bool (const char *args, const char *key, bool *val);
+  int plugin_parse_str (const char *args, const char *key, const char **str, int *len);
+  
   // Load binary from file into ptr
   int plugin_load_binary (const char *args, const char *key, char *ptr, int max);
   

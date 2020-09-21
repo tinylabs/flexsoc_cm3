@@ -40,6 +40,57 @@ int plugin_parse_uint (const char *str, const char *key, uint32_t *val)
   return 0;
 }
 
+int plugin_parse_bool (const char *str, const char *key, bool *val)
+{
+  char *end;
+  uint32_t pval;
+  
+  if (!val)
+    return -1;
+  
+  // Find key in string
+  const char *ptr = strstr (str, key);
+  if (!ptr)
+    return -1;
+
+  // Skip over key
+  ptr += strlen (key);
+
+  // Parse value
+  pval = strtoul (ptr, &end, 0);
+  if (pval)
+    *val = true;
+  else
+    *val = false;
+  return 0;
+}
+
+int plugin_parse_str (const char *args, const char *key, const char **str, int *len)
+{
+  const char *end;
+  
+  if (!str)
+    return -1;
+  
+  // Find key in string
+  const char *ptr = strstr (args, key);
+  if (!ptr)
+    return -1;
+
+  // Skip over key
+  ptr += strlen (key);
+  end = ptr;
+  
+  // Find end of string
+  while ((*end != ' ') && (*end != '\0'))
+    end++;
+
+  // Return string and length
+  *str = ptr;
+  *len = end - ptr;
+  return 0;
+}
+
 int plugin_load_binary (const char *args, const char *key, char *ptr, int max)
 {
   const char *end;

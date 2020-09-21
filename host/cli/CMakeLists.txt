@@ -8,7 +8,7 @@ include_directories( . plugins )
 add_definitions( -DINSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}/plugins" )
 
 # Create executable
-add_executable( flexsoc_cm3
+add_executable( flexsoc-cm3
   flexsoc_cm3.cpp
   ll.c
   main.cpp
@@ -17,11 +17,11 @@ add_executable( flexsoc_cm3
   )
 
 # Link to comm lib
-target_link_libraries( flexsoc_cm3 log target dl )
-#set_target_properties( flexsoc_cm3 PROPERTIES COMPILE_FLAGS "-O0 -ggdb" )
+target_link_libraries( flexsoc-cm3 log target dl )
+#set_target_properties( flexsoc-cm3 PROPERTIES COMPILE_FLAGS "-O0 -ggdb" )
 
 # Install into bin
-install( TARGETS flexsoc_cm3
+install( TARGETS flexsoc-cm3
   DESTINATION bin )
 
 # Add builtin plugin subdirectory

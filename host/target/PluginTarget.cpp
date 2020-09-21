@@ -17,9 +17,9 @@
 
 PluginTarget::PluginTarget (void)
 {
-  irq = new irq_slave (IRQ_BASE, &flexsoc_reg_read, &flexsoc_reg_write);
-  if (!irq)
-    err ("Failed to inst irq_slave");
+  csr = new flexsoc_csr (CSR_BASE, &flexsoc_reg_read, &flexsoc_reg_write);
+  if (!csr)
+    err ("Failed to inst flesoc_csr");
 
   // Save host tid
   host_tid = pthread_self ();
@@ -27,7 +27,7 @@ PluginTarget::PluginTarget (void)
 
 PluginTarget::~PluginTarget ()
 {
-  delete irq;
+  delete csr;
 }
 
 uint32_t PluginTarget::ReadW (uint32_t addr)
@@ -80,24 +80,34 @@ void PluginTarget::Log (uint8_t lvl, const char *fmt, ...)
   va_list va;
   va_start (va, fmt);
   vlog (lvl, fmt, va);
+  log (lvl, "");
   va_end (va);
+}
+void PluginTarget::Fail (const char *fmt, ...)
+{
+  va_list va;
+  va_start (va, fmt);
+  vlog (LOG_ERR, fmt, va);
+  log (LOG_ERR, "");
+  va_end (va);
+  Exit (-1);
 }
 
 void PluginTarget::IRQ (uint32_t n)
 {
-  irq->edge (n >> 5, 1 << (n & 0x1f));
+  csr->irq_edge (n >> 5, 1 << (n & 0x1f));
 }
 
 void PluginTarget::IRQSet (uint8_t n)
 {
-  irq->level (n >> 5, 1 << (n & 0x1f));
+  csr->irq_level (n >> 5, 1 << (n & 0x1f));
 }
 
 void PluginTarget::IRQClr (uint8_t n)
 {
-  uint32_t cur = irq->level (n >> 5);
+  uint32_t cur = csr->irq_level (n >> 5);
   cur &= ~(1 << (n & 0x1f));
-    irq->level (n >> 5, cur);
+  csr->irq_level (n >> 5, cur);
 }
 
 void PluginTarget::Exit (int status)
@@ -107,4 +117,23 @@ void PluginTarget::Exit (int status)
 
   // Send host interrupt to stop
   pthread_kill (host_tid, SIGINT);
+}
+
+uint32_t PluginTarget::MaskAddr (uint32_t addr, uint32_t mask)
+{
+  switch (mask) {
+    case 0xffffffff:
+    case 0xffff:
+    case 0xff: return addr;
+    case 0xffff0000:
+    case 0xff0000: return addr + 2;
+    case 0xff00: return addr + 1;
+    case 0xff000000: return addr + 3;
+    default: return 0;
+  }
+}
+
+uint32_t PluginTarget::MaskData (uint32_t data, uint32_t mask)
+{
+  return (data & mask) >> __builtin_ctz (mask);
 }

@@ -13,16 +13,14 @@ module arty_top
     parameter RAM_SZ               = 0,
     parameter ROM_FILE             = ""
     )(
-      input         CLK_100M,
-      input         RESET,
-      // JTAG/SWD pins
-      input         TCK_SWDCLK,
-      input         TDI,
-      inout         TMS_SWDIO,
-      output        TDO,
+      input  CLK_100M,
+      input  RESET,
+      // Debug SWD pins
+      input  TCK_SWDCLK,
+      inout  TMS_SWDIO,
       // UART to host
-      input         UART_RX,
-      output        UART_TX
+      input  UART_RX,
+      output UART_TX
       );
 
    // Clocks and PLL
@@ -121,7 +119,7 @@ module arty_top
 
       end
    endgenerate
-
+   
    // Generate reset logic from pushbutton/pll
    logic [3:0]         reset_ctr;
    initial reset_ctr <= 'hf;
@@ -137,7 +135,7 @@ module arty_top
    
    // Explicit IOBUF
    logic               swdoe, swdout;
-   logic               swdin, swdin_buf;
+   logic               swdin;
    IOBUF swdio_IOBUF (.IO (TMS_SWDIO), .I (swdout), .O (swdin), .T (!swdoe));
    
    // Instantiate SoC
@@ -153,9 +151,9 @@ module arty_top
           .TRANSPORT_CLK (transport_clk),
           .PORESETn      (poreset_n),
           .TCK_SWDCLK    (TCK_SWDCLK),
-          .TDI           (TDI),
+          .TDI           (1'b0),
           .TMS_SWDIN     (swdin),
-          .TDO           (TDO),
+          .TDO           (),
           .SWDOUT        (swdout),
           .SWDOUTEN      (swdoe),
           .UART_TX       (UART_TX),

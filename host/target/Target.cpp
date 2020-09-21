@@ -23,9 +23,6 @@ Target::Target (char *id)
     err ("Failed to open: %s", id);
 
   // Create autogen CSR classes
-  irq = new irq_slave (IRQ_BASE, &flexsoc_reg_read, &flexsoc_reg_write);
-  if (!irq)
-    err ("Failed to inst irq_slave");
   csr = new flexsoc_csr (CSR_BASE, &flexsoc_reg_read, &flexsoc_reg_write);
   if (!csr)
     err ("Failed to inst flexsoc_csr");
@@ -38,7 +35,6 @@ Target::~Target ()
   //SlaveUnregister ();
 
   // Delete CSR classes
-  delete irq;
   delete csr;
     
   // Close comm link
@@ -124,19 +120,19 @@ void Target::SlaveSend (const uint8_t *data, int len)
 // Access IRQs
 void Target::IRQ (uint8_t n)
 {
-  irq->edge (n >> 5, 1 << (n & 0x1f));
+  csr->irq_edge (n >> 5, 1 << (n & 0x1f));
 }
 
 void Target::IRQSet (uint8_t n)
 {
-  irq->level (n >> 5, 1 << (n & 0x1f));
+  csr->irq_level (n >> 5, 1 << (n & 0x1f));
 }
 
 void Target::IRQClr (uint8_t n)
 {
-  uint32_t cur = irq->level (n >> 5);
+  uint32_t cur = csr->irq_level (n >> 5);
   cur &= ~(1 << (n & 0x1f));
-  irq->level (n >> 5, cur);
+  csr->irq_level (n >> 5, cur);
 }
 
 // Access CSRs
@@ -170,4 +166,27 @@ bool Target::SlaveEn (void)
   return csr->slave_en ();
 }
 
-
+void Target::MemoryAlias (uint32_t base, uint32_t size, uint32_t redirect)
+{
+  // Code bus
+  if (base < 0x20000000) {
+    // Check if remap0 is used
+    if (csr->code_remap0_base() == 0) {
+      csr->code_remap0_base (base);
+      csr->code_remap0_end (base + size);
+      csr->code_remap0_off (redirect);
+    }
+    // Use remap1
+    else {
+      csr->code_remap1_base (base);
+      csr->code_remap1_end (base + size);
+      csr->code_remap1_off (redirect);
+    }
+  }
+  // Sys bus
+  else {
+    csr->sys_remap0_base (base);
+    csr->sys_remap0_end (base + size);
+    csr->sys_remap0_off (redirect);
+  }
+}

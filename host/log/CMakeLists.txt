@@ -11,3 +11,7 @@ add_library( log
 # Enable debug
 #set_target_properties( log PROPERTIES COMPILE_FLAGS "-O0 -ggdb" )
 
+# Install headers
+install( FILES
+  log.h
+  DESTINATION include )

@@ -1,5 +1,5 @@
 #
-# flexsoc_cm3 top-level cmake file
+# flexsoc-cm3 top-level cmake file
 # 
 # All rights reserved.
 # Tiny Labs Inc
@@ -14,14 +14,14 @@ set( CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
 set( CMAKE_TOOLCHAIN_FILE ARM-Toolchain )
 
 # Create project
-project( flexsoc_cm3 )
+project( flexsoc-cm3 )
 
 # Enable languages
 enable_language( C CXX ASM )
 
 # Set install if not set
 if( CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT )
-  set( CMAKE_INSTALL_PREFIX /opt/flexsoc_cm3 CACHE PATH "" FORCE )
+  set( CMAKE_INSTALL_PREFIX /opt/flexsoc-cm3 CACHE PATH "" FORCE )
 endif()
 message( "INSTALL=${CMAKE_INSTALL_PREFIX}" )
 
@@ -59,10 +59,15 @@ execute_process(COMMAND git log --pretty=format:%h -n 1
                 ERROR_QUIET)
               
 # Configure pkg-config file
-#set( DEST_DIR ${CMAKE_INSTALL_PREFIX} )
 get_property( PRIVATE_LIBS GLOBAL PROPERTY PRIVATE_LIBS )
-configure_file( pkg-config/flexsoc_cm3.pc.in flexsoc_cm3.pc @ONLY )
+configure_file( pkg-config/flexsoc-cm3.pc.in flexsoc-cm3.pc @ONLY )
 
 # Install pkg-config file
-install( FILES ${CMAKE_BINARY_DIR}/flexsoc_cm3.pc
+install( FILES ${CMAKE_BINARY_DIR}/flexsoc-cm3.pc
   DESTINATION /usr/share/pkgconfig )
+
+# Generate package for debian
+set( CPACK_GENERATOR "DEB" )
+set( CPACK_DEBIAN_PACKAGE_MAINTAINER "elliot@tinylabs.io" )
+set( CPACK_DEBIAN_PACKAGE_DEPENDS "libftdi-dev" )
+include( CPack )

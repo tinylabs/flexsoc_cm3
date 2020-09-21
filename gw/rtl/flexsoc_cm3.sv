@@ -11,24 +11,25 @@ module flexsoc_cm3
     parameter XILINX_ENC_CM3 = 0,
     parameter ROM_SZ         = 0,
     parameter RAM_SZ         = 0,
+    parameter FLASH_SZ       = 0,
     parameter ROM_FILE       = ""
   ) (
      // Clock and reset
-     input         CLK,
-     input         PORESETn,
-     input         TRANSPORT_CLK,
+     input  CLK,
+     input  PORESETn,
+     input  TRANSPORT_CLK,
      
      // JTAG/SWD
-     input         TCK_SWDCLK,
-     input         TDI,
-     input         TMS_SWDIN,
-     output        TDO,
-     output        SWDOUT,
-     output        SWDOUTEN,
+     input  TCK_SWDCLK,
+     input  TDI,
+     input  TMS_SWDIN,
+     output TDO,
+     output SWDOUT,
+     output SWDOUTEN,
 
      // Host interface
-     output        UART_TX,
-     input         UART_RX
+     output UART_TX,
+     input  UART_RX
    );
 
    // Implicit reset for autogen interconnect
@@ -53,7 +54,7 @@ module flexsoc_cm3
    assign slave_en_i = slave_en_o;
    assign flexsoc_id = 32'hf1ec50c1;
    assign memory_id = (ROM_SZ >> 10) | ((RAM_SZ >> 10) << 16);
-   
+
    // CPU reset controller
    logic        cpureset_n, sysresetreq;
    logic [3:0]  cpureset_ctr;
@@ -65,6 +66,39 @@ module flexsoc_cm3
           cpureset_ctr <= cpureset_ctr - 1;
      end
    assign cpureset_n = |cpureset_ctr ? 1'b0 : 1'b1;
+
+   // Generate IRQs from CSR
+   for (genvar n = 0; n < `IRQ_CNT / 32; n++)
+     begin
+        assign irq[(n*32)+31:(n*32)] = irq_level_o[n] | irq_edge_o[n];
+
+        // Level follows, edge resets
+        assign irq_level_o[n] = irq_level_i[n];
+        assign irq_edge_o[n] = 32'h0;
+     end
+
+   // Redirect AHB3 master addresses
+   wire [31:0] cm3_code_haddr;
+   wire [31:0] code_remap0, code_remap1;
+   
+   assign ahb3_cm3_code_HADDR = ((cm3_code_haddr >= code_remap0_base_o) && (cm3_code_haddr < code_remap0_end_o)) ?
+                                (cm3_code_haddr - code_remap0_base_o) + code_remap0_off_o : 
+                                (((cm3_code_haddr >= code_remap1_base_o) && (cm3_code_haddr < code_remap1_end_o)) ?
+                                 (cm3_code_haddr - code_remap1_base_o) + code_remap1_off_o
+                                 : cm3_code_haddr);
+   assign code_remap0_base_i = code_remap0_base_o;
+   assign code_remap0_end_i = code_remap0_end_o;
+   assign code_remap0_off_i = code_remap0_off_o;
+   assign code_remap1_base_i = code_remap1_base_o;
+   assign code_remap1_end_i = code_remap1_end_o;
+   assign code_remap1_off_i = code_remap1_off_o;
+
+   wire [31:0] cm3_sys_haddr;
+   assign ahb3_cm3_sys_HADDR = ((cm3_sys_haddr >= sys_remap0_base_o) && (cm3_sys_haddr < sys_remap0_end_o)) ?
+                                (cm3_sys_haddr - sys_remap0_base_o) + sys_remap0_off_o : cm3_sys_haddr;
+   assign sys_remap0_base_i = sys_remap0_base_o;
+   assign sys_remap0_end_i = sys_remap0_end_o;
+   assign sys_remap0_off_i = sys_remap0_off_o;
    
    // Instantiate ROM
    ahb3lite_sram1rw
@@ -79,7 +113,7 @@ module flexsoc_cm3
                 .HCLK      (CLK),
                 .HRESETn   (PORESETn),
                 .HSEL      (ahb3_rom_HSEL),
-                .HADDR     (ahb3_rom_HADDR),
+                .HADDR     (ahb3_rom_HADDR}),
                 .HWDATA    (ahb3_rom_HWDATA),
                 .HRDATA    (ahb3_rom_HRDATA),
                 .HWRITE    (ahb3_rom_HWRITE),
@@ -91,7 +125,7 @@ module flexsoc_cm3
                 .HREADY    (ahb3_rom_HREADY),
                 .HRESP     (ahb3_rom_HRESP)
                 );
-   
+
    // Instantiate RAM
    ahb3lite_sram1rw
      #(
@@ -117,27 +151,6 @@ module flexsoc_cm3
                 .HRESP     (ahb3_ram_HRESP)
                 );
   
-   // IRQ slave
-   ahb3lite_irq_slave
-     #(
-       .IRQ_CNT  (`IRQ_CNT)
-       ) u_irq (
-                .CLK       (CLK),
-                .RESETn    (PORESETn),
-                .HSEL      (ahb3_irq_HSEL),
-                .HADDR     (ahb3_irq_HADDR),
-                .HWDATA    (ahb3_irq_HWDATA),
-                .HRDATA    (ahb3_irq_HRDATA),
-                .HWRITE    (ahb3_irq_HWRITE),
-                .HSIZE     (ahb3_irq_HSIZE),
-                .HBURST    (ahb3_irq_HBURST),
-                .HPROT     (ahb3_irq_HPROT),
-                .HTRANS    (ahb3_irq_HTRANS),
-                .HREADYOUT (ahb3_irq_HREADYOUT),
-                .HREADY    (ahb3_irq_HREADY),
-                .HRESP     (ahb3_irq_HRESP),
-                .IRQ       (irq)
-                );
 
    // Master <=> arbiter
    wire master_RDEN, master_WREN, master_WRFULL, master_RDEMPTY;
@@ -334,7 +347,7 @@ module flexsoc_cm3
             .JTAGNSW      (),
             
             // AHB3 code master
-            .code_HADDR     (ahb3_cm3_code_HADDR),
+            .code_HADDR     (cm3_code_haddr),  // Run through redirect
             .code_HWDATA    (ahb3_cm3_code_HWDATA),
             .code_HTRANS    (ahb3_cm3_code_HTRANS),
             .code_HSIZE     (ahb3_cm3_code_HSIZE),
@@ -347,7 +360,7 @@ module flexsoc_cm3
             .code_HREADY    (ahb3_cm3_code_HREADY),
 
             // AHB3 system master
-            .sys_HADDR     (ahb3_cm3_sys_HADDR),
+            .sys_HADDR     (cm3_sys_haddr),
             .sys_HWDATA    (ahb3_cm3_sys_HWDATA),
             .sys_HTRANS    (ahb3_cm3_sys_HTRANS),
             .sys_HSIZE     (ahb3_cm3_sys_HSIZE),

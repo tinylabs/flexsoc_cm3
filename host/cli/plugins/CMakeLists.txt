@@ -17,6 +17,7 @@ set_property( GLOBAL APPEND PROPERTY PRIVATE_LIBS "-lpluginhelper" )
 install( FILES
   plugin.h
   pluginhelper.h
+  BusPeripheral.h
   DESTINATION include )
 
 # Builtin plugins

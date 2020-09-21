@@ -11,7 +11,6 @@
 
 // Must be updated if HDL map changes
 #define CSR_BASE 0xE0000000
-#define IRQ_BASE 0xE0000100
 
 #endif /* HWREG_H */
 

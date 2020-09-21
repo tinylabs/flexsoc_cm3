@@ -134,7 +134,12 @@ int flexsoc_cm3 (args_t *args)
   signal (SIGINT, &shutdown);
   
   // Release processor from reset
-  target->CPUReset (false);
+  if (!args->gdb) {
+    log (LOG_DEBUG, "Releasing CPURESETn");
+    target->CPUReset (false);
+  }
+  else
+    log (LOG_DEBUG, "Waiting for debugger...");
 
   // Launch TCP server for master access
   while (!shutdown_flag)

@@ -28,3 +28,9 @@ reorder_files -fileset constrs_1 -front [get_files clocks.xdc]
 
 # Set flags for files
 set_property USED_IN_SYNTHESIS false [get_files pins.xdc]
+
+# Change strategy to meet timing (Congestion_SpreadLogic_high)
+set_property STEPS.OPT_DESIGN.ARGS.DIRECTIVE Default [get_runs impl_1]
+set_property STEPS.PLACE_DESIGN.ARGS.DIRECTIVE AltSpreadLogic_high [get_runs impl_1]
+set_property STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE AggressiveExplore [get_runs impl_1]
+set_property STEPS.ROUTE_DESIGN.ARGS.DIRECTIVE AlternateCLBRouting [get_runs impl_1]

@@ -42,6 +42,10 @@ static int parse_opts (int key, char *arg, struct argp_state *state)
       }
       break;
 
+    case 'g':
+      args.gdb = true;
+      break;
+      
     case 'v':
       if (arg)
         args.verbose = strtoul (arg, NULL, 0);
@@ -93,6 +97,7 @@ static struct argp_option options[] = {
                                        {0, 0, 0, 0, "Remote:", 2},
                                        {"speed",   's', "INT", 0,  "speed in kHz: 100-25000"},
                                        {0, 0, 0, 0, "Debugging:", 3},
+                                       {"gdb", 'g', 0, 0,  "Leave processor in reset until GDB attaches"},
                                        {"verbose", 'v', "INT", 0,  "verbosity level (0-3)"},
                                        {0}
 };

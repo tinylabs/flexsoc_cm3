@@ -6,7 +6,7 @@
  *  2020
  */
 #include <pthread.h>
-#include "irq_slave.h"
+#include "flexsoc_csr.h"
 
 #ifndef PLUGINTARGET_H
 #define PLUGINTARGET_H
@@ -14,7 +14,7 @@
 class PluginTarget {
 
  private:
-  irq_slave *irq;
+  flexsoc_csr *csr;
   pthread_t host_tid;
  public:
   PluginTarget (void);
@@ -30,6 +30,11 @@ class PluginTarget {
   void Log (uint8_t lvl, const char *fmt, ...);
   // For unit testing
   void Exit (int status);
+  // Failure in plugin
+  void Fail (const char *fmt, ...);
+  // Conversion functions
+  uint32_t MaskAddr (uint32_t addr, uint32_t mask);
+  uint32_t MaskData (uint32_t data, uint32_t mask);
 };
 
 #endif /* PLUGINTARGET_H */

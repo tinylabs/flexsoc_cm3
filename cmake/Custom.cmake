@@ -46,9 +46,7 @@ else( NOT CROSSCOMPILING )
     # Make sure our export structure doesn't get compiled out
     set_target_properties( ${NAME} PROPERTIES
 #      COMPILE_FLAGS "-O0 -ggdb"
-      LINK_FLAGS "-Wl,-entry=__plugin"
-      PREFIX ""
-      SUFFIX ".plg" )
+      LINK_FLAGS "-Wl,-entry=__plugin" )
     
     # Link against plugin for helper fns
     target_link_libraries( ${NAME} pluginhelper )
@@ -58,16 +56,16 @@ else( NOT CROSSCOMPILING )
   macro( gw_target NAME )
     add_custom_target( ${NAME}
       COMMENT "Generating gateware for ${NAME}..."
-      COMMAND ${FUSESOC_EXECUTABLE} --target=${NAME} ${CMAKE_PROJECT_NAME}
+      COMMAND ${FUSESOC_EXECUTABLE} --target=${NAME} flexsoc_cm3
       )
   endmacro( gw_target )
 
   function( gen_csr TARGET )
     add_custom_command(
       COMMENT "Generating CSR definitions"
-      COMMAND ${FUSESOC_EXECUTABLE} --target=lint ${CMAKE_PROJECT_NAME}
+      COMMAND ${FUSESOC_EXECUTABLE} --target=lint flexsoc_cm3
       COMMAND cmake -E make_directory ${PROJECT_BINARY_DIR}/generated
-      COMMAND find ${CMAKE_CURRENT_BINARY_DIR}/build/${CMAKE_PROJECT_NAME}_0.1/lint-verilator/ -name '*.h' -exec cp {} ${PROJECT_BINARY_DIR}/generated \\\;
+      COMMAND find ${CMAKE_CURRENT_BINARY_DIR}/build/flexsoc_cm3_0.1/lint-verilator/ -name '*.h' -exec cp {} ${PROJECT_BINARY_DIR}/generated \\\;
       COMMAND cmake -E touch ${PROJECT_BINARY_DIR}/csr_generated.txt
       OUTPUT  ${PROJECT_BINARY_DIR}/csr_generated.txt
       )
@@ -87,11 +85,11 @@ else( NOT CROSSCOMPILING )
       set( FLEXSOC_HW "127.0.0.1:5555" )
       message( STATUS "Running on simulator: ${FLEXSOC_HW}" )
       # TODO: codify version if possible
-      set( VERILATOR_SIM ${PROJECT_BINARY_DIR}/test/build/${CMAKE_PROJECT_NAME}_0.1/sim-verilator/V${CMAKE_PROJECT_NAME} )
+      set( VERILATOR_SIM ${PROJECT_BINARY_DIR}/test/build/flexsoc_cm3_0.1/sim-verilator/Vflexsoc_cm3 )
       add_custom_command(
         OUTPUT ${VERILATOR_SIM}
         COMMENT "Generating verilated sim for ${CMAKE_PROJECT_NAME}"
-        COMMAND ${FUSESOC_EXECUTABLE} --target=sim ${CMAKE_PROJECT_NAME}
+        COMMAND ${FUSESOC_EXECUTABLE} --target=sim flexsoc_cm3
         )
     endif ()
     # Turn on testing

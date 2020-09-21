@@ -1,8 +1,8 @@
-# flexsoc_cm3
-flexsoc_cm3 is a flexible system on chip emulator for the ARM Cortex-M3. The goal is to be able to emulate any Cortex-M3 based chip from any vendor using custom gateware and a host application which can map the memory space appropriately. This approach allows code which is developed on flexsoc_cm3 to run on the target SoC without changes, ifdefs, etc. Conversely, code which is written for a specific SoC can be run/debugged on flexsoc_cm3 without changes. This can be extremely useful for both rapid prototyping a new platform and reverse engineering a platform developed by someone else. 
+# flexsoc-cm3
+flexsoc-cm3 is a flexible system on chip emulator for the ARM Cortex-M3. The goal is to be able to emulate any Cortex-M3 based chip from any vendor using custom gateware and a host application which can map the memory space appropriately. This approach allows code which is developed on flexsoc-cm3 to run on the target SoC without changes, ifdefs, etc. Conversely, code which is written for a specific SoC can be run/debugged on flexsoc-cm3 without changes. This can be extremely useful for both rapid prototyping a new platform and reverse engineering a platform developed by someone else. 
 
 ## Architecture
-To maintain maximum flexibility there are a few building blocks which comprise flexsoc_cm3. Here is a high level block diagram.
+To maintain maximum flexibility there are a few building blocks which comprise flexsoc-cm3. Here is a high level block diagram.
 ![bd](.images/flexsoc_cm3.png)
 On the host side you specify a system map file which sets up mapping such as:
 * Remap the ROM (0x0800.0000 for STM32)
@@ -19,7 +19,7 @@ On the host side you specify a system map file which sets up mapping such as:
     0x0000.0000 - ROM (Can be remapped)
     0x2000.0000 - RAM
     0xE000.0000 - Private peripheral bus (only accessible by CM3 code)
-    0xE000.0000 - flexsoc_cm3 CSR (control/status registers) - Only visible to host
+    0xE000.0000 - flexsoc-cm3 CSR (control/status registers) - Only visible to host
 Any bus transaction that doesn't match a slave will be forwarded to the host. This creates a lot of flexibility. For instance, a host plugin can log all peripheral accesses and then pass them on to the real target using the target bridge. Or a particular peripheral can instantiated using a virtual peripheral plugin and handled directly on the host.
 
 ## Hardware

@@ -1,0 +1,11 @@
+Source: flexsoc-cm3
+Section: devel
+Priority: optional
+Maintainer: Tiny Labs Inc <elliot@tinylabs.io>
+Build-Depends: cmake, build-essential, debhelper (>= 9), python3.8, dh-virtualenv (>= 0.8), verilator
+Homepage: https://tinylabs.io
+
+Package: flexsoc-cm3
+Architecture: any
+Depends: libftdi-dev
+Description: ARM Cortex-M System On Chip emulator

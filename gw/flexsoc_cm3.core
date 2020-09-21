@@ -9,7 +9,6 @@ filesets:
             - ahb3lite_csr
             - ahb3lite_host_master
             - ahb3lite_host_slave
-            - ahb3lite_irq_slave
             - ahb3lite_memory
             - fifo_arb
             - fifo
@@ -65,6 +64,46 @@ generate:
                 cpu_reset:
                     width: 1
                     type: rw
+                # Code REMAP0
+                code_remap0_base:
+                    width: 32
+                    type: rw
+                code_remap0_end:
+                    width: 32
+                    type: rw
+                code_remap0_off:
+                    width: 32
+                    type: rw
+                # Code REMAP1
+                code_remap1_base:
+                    width: 32
+                    type: rw
+                code_remap1_end:
+                    width: 32
+                    type: rw
+                code_remap1_off:
+                    width: 32
+                    type: rw
+                # Sys REMAP
+                sys_remap0_base:
+                    width: 32
+                    type: rw
+                sys_remap0_end:
+                    width: 32
+                    type: rw
+                sys_remap0_off:
+                    width: 32
+                    type: rw
+                
+                # IRQ control
+                irq_level:
+                    width: 32
+                    type: rw
+                    count: 8
+                irq_edge:
+                    width: 32
+                    type: rw
+                    count: 8
                     
     soc_intercon:
         generator: ahb3lite_intercon_gen
@@ -79,16 +118,13 @@ generate:
             slaves:
                 ahb3_rom:
                     offset: 0
-                    size:   16384
+                    size:   0x6000
                 ahb3_ram:
                     offset: 0x20000000
-                    size:   16384
+                    size:   0x4000
                 ahb3_csr:
                     offset: 0xE0000000
-                    size:   16
-                ahb3_irq:
-                    offset: 0xE0000100
-                    size:   64
+                    size:   128
                 ahb3_host_slave:
                     idx:    3 # Force last slave
                     offset: 0
@@ -145,7 +181,7 @@ parameters:
         
     ROM_SZ:
         datatype: int
-        default: 16384
+        default: 24576
         description: Set size of ROM
         paramtype: vlogparam
 
@@ -154,4 +190,3 @@ parameters:
         default: 16384
         description: Set size of RAM
         paramtype: vlogparam
-                

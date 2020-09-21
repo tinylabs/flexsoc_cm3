@@ -39,7 +39,7 @@ fi
 if [[ $EXT == "1" ]]; then
     echo "External interface not supported yet"
 else
-    $ROOT/host/cli/flexsoc_cm3 -p $ROOT/host/cli/plugins -m $MAP -l $BIN $HWID
+    $ROOT/host/cli/flexsoc-cm3 -p $ROOT/host/cli/plugins -m $MAP -l $BIN $HWID
 fi
 RV=$?
 

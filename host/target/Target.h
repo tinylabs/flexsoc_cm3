@@ -13,7 +13,6 @@
 #include <stdlib.h>
 
 #include "flexsoc_csr.h"
-#include "irq_slave.h"
 
 class Target {
 
@@ -21,7 +20,6 @@ class Target {
 
 private:
   flexsoc_csr *csr;
-  irq_slave *irq;
   Target (char *id);
   
  public:
@@ -62,7 +60,9 @@ private:
   bool CPUReset (void);
   void SlaveEn (bool en);
   bool SlaveEn (void);
-  
+
+  // Memory bus aliasing
+  void MemoryAlias (uint32_t base, uint32_t size, uint32_t redirect);
 };
 
 #endif /* TARGET_H */

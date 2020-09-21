@@ -66,16 +66,16 @@ static void *plugin_open (const char *name)
       continue;
     
     // Malloc space
-    // path + / + name + .plg + \0
-    char *path = (char *)malloc (strlen (name) + strlen (search[i]) + 2 + 4);
+    // path + / + lib + name + .so + \0
+    char *path = (char *)malloc (strlen (name) + strlen (search[i]) + 8);
     if (!path)
       return NULL;
     
     // Create full path
     strcpy (path, search[i]);
-    strcat (path, "/");
+    strcat (path, "/lib");
     strcat (path, name);
-    strcat (path, ".plg");
+    strcat (path, ".so");
 
     // Try to open
     hdl = dlopen (path, RTLD_NOW);
@@ -251,7 +251,7 @@ static void plugin_handler (uint8_t *buf, int len)
 
   // Check if not found
   if (i == pcnt) {
-    log (LOG_ERR, "Err: Unmatched addr: 0x%08X\n", addr);
+    log (LOG_ERR, "Err: Unmatched addr: 0x%08X", addr);
     resp[0] = (write << 3) | FAIL;
     target->SlaveSend (resp, 1);
     return;

@@ -23,6 +23,7 @@ typedef struct {
   int    path_cnt;  // Number of plugin path
   char   *map;      // System map file
   int    verbose;   // 0=off 3=max
+  bool   gdb;
 } args_t;
 
 int flexsoc_cm3 (args_t *args);

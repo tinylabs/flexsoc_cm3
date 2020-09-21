@@ -80,7 +80,7 @@
 using namespace std;
 
 
-static PluginTarget *target;
+static PluginTarget *ptarget;
 
 // trim from both ends (in place)
 static inline void trim(std::string &s) {
@@ -92,6 +92,17 @@ static inline void trim(std::string &s) {
     }).base(), s.end());
 }
 
+static uint32_t parse_uint (const char *str)
+{
+  char *end;
+  uint32_t val = strtoul (str, &end, 0);
+  if (*end == 'k')
+    val *= 1024;
+  else if (*end == 'M')
+    val *= (1024 * 1024);
+  return val;
+}
+
 int sysmap_parse (const char *map, BusPeripheral ***bp, int *cnt)
 {
   int rv;
@@ -100,8 +111,11 @@ int sysmap_parse (const char *map, BusPeripheral ***bp, int *cnt)
   if (!bp || !cnt)
     return -1;
 
+  // Get host target
+  Target *target = Target::Ptr ();
+  
   // Create plugin target
-  target = new PluginTarget ();
+  ptarget = new PluginTarget ();
   
   // Clear count
   *cnt = 0;
@@ -152,46 +166,70 @@ int sysmap_parse (const char *map, BusPeripheral ***bp, int *cnt)
     }
 
     // Analyze parts
-    if ((tokens.size () < 2) || (tokens.size () > 4)) {
+    if ((tokens.size () < 1) || (tokens.size () > 4)) {
       log (LOG_ERR, "Invalid line [%s]", line);
       return -1;
     }
 
-    // Look for plugin
-    obj = plugin_load (plugin.c_str (), tokens[1].c_str(), &type);
-    if (!obj) {
-      log (LOG_ERR, "Plugin not found: %s", plugin);
-      return -1;
-    }
+    // Handle builtin functions
+    if (plugin == "alias") {
 
-    // Handle bus peripherals
-    if (type == BUSPERIPH) {
-    
-      // Cast to busperipheral
-      BusPeripheral *p = (BusPeripheral *)obj;
+      if (tokens.size () != 3)
+        log (LOG_ERR, "Invalid alias args: alias@base:size:redirect");
+
+      log (LOG_DEBUG, "[alias] 0x%08X => 0x%08X (size=0x%X)",
+           parse_uint (addr.c_str ()),
+           parse_uint (tokens[2].c_str ()),
+           parse_uint (tokens[1].c_str ()));
       
-      // Set base address
-      p->SetBase (strtoul (addr.c_str (), NULL, 0));
-
-      // Set target operations
-      p->SetTarget (target);
-
-      // Initialize bus peripheral
-      p->Init ();
-      
-      // Add to peripheral array
-      *bp = (BusPeripheral **)realloc (*bp, sizeof (BusPeripheral *) * (*cnt + 1));
-      if (!*bp)
-        return -1;
-      (*bp)[(*cnt)++] = p;
-
-      // Print out
-      log (LOG_NORMAL, "  %08X: %s", p->Base(), plugin.c_str());
-      log (LOG_DEBUG, "    %s", tokens[1].c_str());
+      // Configure memory alias, if on same bus as previous it will be overwritten
+      target->MemoryAlias (parse_uint (addr.c_str ()),
+                           parse_uint (tokens[1].c_str ()),
+                           parse_uint (tokens[2].c_str ()));
     }
-    // Handle non busperipheral types
     else {
+      
+      // Look for plugin
+      if (tokens.size () > 1)
+        obj = plugin_load (plugin.c_str (), tokens[1].c_str(), &type);
+      else
+        obj = plugin_load (plugin.c_str (), "", &type);
 
+      if (!obj) {
+        log (LOG_ERR, "Plugin not found: %s", plugin);
+        return -1;
+      }
+
+      // Handle bus peripherals
+      if (type == BUSPERIPH) {
+        
+        // Cast to busperipheral
+        BusPeripheral *p = (BusPeripheral *)obj;
+        
+        // Set base address
+        p->SetBase (strtoul (addr.c_str (), NULL, 0));
+        
+        // Set target operations
+        p->SetTarget (ptarget);
+        
+        // Initialize bus peripheral
+        p->Init ();
+        
+        // Add to peripheral array
+        *bp = (BusPeripheral **)realloc (*bp, sizeof (BusPeripheral *) * (*cnt + 1));
+        if (!*bp)
+          return -1;
+        (*bp)[(*cnt)++] = p;
+        
+        // Print out
+        log (LOG_NORMAL, "  %08X: %s", p->Base(), plugin.c_str());
+        if (tokens.size() > 1)
+          log (LOG_DEBUG, "  %s", tokens[1].c_str());
+      }
+      // Handle non busperipheral types
+      else {
+        
+      }
     }
   }
 
@@ -202,5 +240,5 @@ int sysmap_parse (const char *map, BusPeripheral ***bp, int *cnt)
 
 void sysmap_cleanup (void)
 {
-  delete target;
+  delete ptarget;
 }

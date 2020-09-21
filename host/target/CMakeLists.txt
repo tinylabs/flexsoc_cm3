@@ -21,4 +21,8 @@ gen_csr( target )
 # Link to comm layer
 target_link_libraries( target log flexsoc )
 
-
+# Install headers
+install( FILES
+  PluginTarget.h
+  ${CMAKE_BINARY_DIR}/generated/flexsoc_csr.h
+  DESTINATION include )

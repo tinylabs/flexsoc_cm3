@@ -14,7 +14,7 @@
 #include "err.h"
 
 #define SEED       0xdeadbeef
-#define BUFSZ_WORD (16*1024)/4
+#define BUFSZ_WORD (8*1024)/4
 //#define BUFSZ_WORD (1*1024)/4
 #define ADDR       0x00000000
 
