@@ -13,6 +13,7 @@ add_executable( flexsoc-cm3
   ll.c
   main.cpp
   plugini.cpp
+  remote.cpp
   sysmap_parse.cpp
   )
 

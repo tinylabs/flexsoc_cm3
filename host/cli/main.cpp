@@ -68,6 +68,16 @@ static int parse_opts (int key, char *arg, struct argp_state *state)
         args.path_cnt++;
       }
       break;
+
+    case 'r':
+      args.remote = true;
+      if (arg)
+        args.remote_div = strtoul (arg, NULL, 0);
+      break;
+
+    case 'h':
+      args.remote_halt = false;
+      break;
       
     case ARGP_KEY_ARG:
       args.device = arg;
@@ -90,12 +100,12 @@ static int parse_opts (int key, char *arg, struct argp_state *state)
 static struct argp_option options[] = {
                                        {0, 0, 0, 0, "Operations:", 1},
                                        {"map",     'm', "FILE", 0, "system map file"},
-                                       {"load",    'l', "FILE", 0, "filename[@address] (default=0)\n"
-                                        "multiple load opts supported"},
-                                       {"path",    'p', "DIR", 0,  "Plugin search path\n"
-                                        "multiple path opts supported"},
+                                       {"load",    'l', "FILE", 0, "filename[@address] (default=0)\nmultiple load opts supported"},
+                                       {"path",    'p', "DIR", 0,  "Plugin search path\nmultiple path opts supported"},
+                                       
                                        {0, 0, 0, 0, "Remote:", 2},
-                                       {"speed",   's', "INT", 0,  "speed in kHz: 100-25000"},
+                                       {"remote",  'r', "0-7", OPTION_ARG_OPTIONAL, "Connect remote: Opt clk divisor: 0-7"},
+                                       {"halt",    'h', 0, 0, "Do NOT halt remote CPU (default=halt CPU)"},
                                        {0, 0, 0, 0, "Debugging:", 3},
                                        {"gdb", 'g', 0, 0,  "Leave processor in reset until GDB attaches"},
                                        {"verbose", 'v', "INT", 0,  "verbosity level (0-3)"},
@@ -111,6 +121,7 @@ int main (int argc, char **argv)
   // Clear args
   memset (&args, 0, sizeof (args));
   args.verbose = LOG_NORMAL;
+  args.remote_halt = true;
   
   // Add system path to plugin path
 #if defined(INSTALL_PREFIX)

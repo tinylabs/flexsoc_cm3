@@ -12,6 +12,7 @@
 
 #include "Target.h"
 #include "flexsoc.h"
+#include "remote.h"
 #include "log.h"
 
 #include <signal.h>
@@ -97,6 +98,11 @@ int flexsoc_cm3 (args_t *args)
   memid = target->MemoryID ();
   log (LOG_NORMAL, "%dkB ROM/%dkB RAM [HW=%s]", memid & 0xffff, (memid >> 16), args->device);
   free (device);
+
+  // Setup remote if enabled
+  if (args->remote)
+    if (remote_open (args->remote_div, args->remote_halt))
+      log (LOG_ERR, "Failed to connect to remote");
   
   // Load binaries into memory
   for (i = 0; i < args->load_cnt; i++) {
@@ -144,9 +150,12 @@ int flexsoc_cm3 (args_t *args)
   // Launch TCP server for master access
   while (!shutdown_flag)
     ;
-  
+
   // Put the CPU back into reset
   target->CPUReset (true);
+
+  // Disable remote interface
+  remote_close ();
 
   // Clean up plugins
   plugin_cleanup ();

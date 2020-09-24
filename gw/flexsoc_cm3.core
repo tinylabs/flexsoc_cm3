@@ -10,6 +10,7 @@ filesets:
             - ahb3lite_host_master
             - ahb3lite_host_slave
             - ahb3lite_memory
+            - ahb3lite_remote_bridge
             - fifo_arb
             - fifo
             - uart_fifo
@@ -93,8 +94,7 @@ generate:
                     type: rw
                 sys_remap0_off:
                     width: 32
-                    type: rw
-                
+                    type: rw                
                 # IRQ control
                 irq_level:
                     width: 32
@@ -104,6 +104,51 @@ generate:
                     width: 32
                     type: rw
                     count: 8
+                # Remote bridge
+                brg_en:
+                    width: 1
+                    type: rw
+                brg_clkdiv:
+                    width: 3
+                    type: rw
+                brg_ctrl:
+                    width: 5
+                    type: rw
+                brg_data:
+                    width: 32
+                    type: rw
+                brg_stat:
+                    width: 3
+                    type: ro
+                brg_ahb_en:
+                    width: 1
+                    type: rw
+                brg_apsel:
+                    width: 8
+                    type: rw
+                brg_idcode:
+                    width: 32
+                    type: ro
+                brg_remap32:
+                    width: 32
+                    type: rw
+                    count: 2
+                brg_remap256:
+                    width: 4
+                    type: rw
+                brg_irq_scanen:
+                    width: 1
+                    type: rw
+                brg_irq_len:
+                    width: 3
+                    type: rw
+                brg_irq_off:
+                    width: 3
+                    type: rw
+                brg_irq_mask:
+                    width: 32
+                    type: rw
+                    count: 2                    
                     
     soc_intercon:
         generator: ahb3lite_intercon_gen
@@ -122,9 +167,12 @@ generate:
                 ahb3_ram:
                     offset: 0x20000000
                     size:   0x10000
+                ahb3_brg:
+                    offset: 0x80000000
+                    size:   0x20000000
                 ahb3_csr:
                     offset: 0xE0000000
-                    size:   128
+                    size:   256
                 ahb3_host_slave:
                     idx:    3 # Force last slave
                     offset: 0

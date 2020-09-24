@@ -98,7 +98,8 @@ int main(int argc, char **argv, char **env)
       top->eval();
       top->CLK = !top->CLK;
       top->TRANSPORT_CLK = !top->TRANSPORT_CLK;
-      utils->doJTAGServer (&top->TMS_SWDIN, &top->TDI, &top->TCK_SWDCLK, top->TDO, 0, &top->PORESETn);
+      utils->doJTAGServer (&top->TMS_SWDIN, &top->TDI, &top->TCK_SWDCLK, top->TDO, top->SWDOUT, &top->PORESETn);
+      utils->doSWDClient (top->BRG_SWDCLK, top->BRG_SWDOUT, &top->BRG_SWDIN, top->BRG_SWDOE);
       if (top->PORESETn)
         utils->doUARTServer (top->UART_TX, &top->UART_RX);
 	}

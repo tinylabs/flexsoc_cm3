@@ -10,6 +10,10 @@ set_property -dict { PACKAGE_PIN T15   IOSTANDARD LVCMOS33 } [get_ports { TMS_SW
 set_property -dict { PACKAGE_PIN D10   IOSTANDARD LVCMOS33 } [get_ports { UART_TX }]; # FPGA->HOST
 set_property -dict { PACKAGE_PIN A9    IOSTANDARD LVCMOS33 } [get_ports { UART_RX }]; # HOST->FPGA
 
+# Target bridge connection
+set_property -dict { PACKAGE_PIN E15   IOSTANDARD LVCMOS33 } [get_ports { BRG_SWDIO }];  # Pmod JB[0]
+set_property -dict { PACKAGE_PIN D15   IOSTANDARD LVCMOS33 } [get_ports { BRG_SWDCLK }]; # Pmod JB[2]
+
 # Ignore timing on async reset
 set_false_path -from [get_ports { RESET }]
 

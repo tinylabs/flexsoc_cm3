@@ -20,7 +20,10 @@ module arty_top
       inout  TMS_SWDIO,
       // UART to host
       input  UART_RX,
-      output UART_TX
+      output UART_TX,
+      // Bridge to target
+      output BRG_SWDCLK,
+      inout  BRG_SWDIO
       );
 
    // Clocks and PLL
@@ -133,10 +136,15 @@ module arty_top
      end
    assign poreset_n = (reset_ctr != 0) ? 1'b0 : 1'b1;
    
-   // Explicit IOBUF
+   // flexsoc debug
    logic               swdoe, swdout;
    logic               swdin;
-   IOBUF swdio_IOBUF (.IO (TMS_SWDIO), .I (swdout), .O (swdin), .T (!swdoe));
+   IOBUF u_swdio0 (.IO (TMS_SWDIO), .I (swdout), .O (swdin), .T (!swdoe));
+
+   // target bridge
+   logic               brg_swdoe, brg_swdout;
+   logic               brg_swdin;
+   IOBUF u_swdio1 (.IO (BRG_SWDIO), .I (brg_swdout), .O (brg_swdin), .T (!brg_swdoe));
    
    // Instantiate SoC
    flexsoc_cm3
@@ -157,7 +165,11 @@ module arty_top
           .SWDOUT        (swdout),
           .SWDOUTEN      (swdoe),
           .UART_TX       (UART_TX),
-          .UART_RX       (UART_RX)
+          .UART_RX       (UART_RX),
+          .BRG_SWDIN     (brg_swdin),
+          .BRG_SWDOUT    (brg_swdout),
+          .BRG_SWDOE     (brg_swdoe),
+          .BRG_SWDCLK    (BRG_SWDCLK)
           );
                
 endmodule // arty_top

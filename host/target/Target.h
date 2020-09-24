@@ -14,11 +14,26 @@
 
 #include "flexsoc_csr.h"
 
+
+// Remote stat enum
+typedef enum
+  {
+   SUCCESS     = 0,
+   ERR_FAULT   = 1,
+   ERR_PARITY  = 2,
+   ERR_TIMEOUT = 3,
+   ERR_NOMEMAP = 4,
+   ERR_UNSUPSZ = 5,
+   ERR_UNKNOWN = 7,
+  } remote_stat_t;
+
 class Target {
 
   static Target *inst;
 
 private:
+  int remote_timeout = 10;
+  uint8_t apsel = 0;
   flexsoc_csr *csr;
   Target (char *id);
   
@@ -63,6 +78,31 @@ private:
 
   // Memory bus aliasing
   void MemoryAlias (uint32_t base, uint32_t size, uint32_t redirect);
+
+  // Remote access
+  void RemoteTimeout (int timeout);
+  void RemoteEn (bool en);
+  bool RemoteEn (void);
+  uint8_t RemoteStat (void);
+  const char *RemoteStatStr (void);
+  void RemoteClkDiv (uint8_t div);
+  uint8_t RemoteClkDiv (void);
+  uint32_t RemoteIDCODE (void);
+  uint32_t RemoteRegRead (bool APnDP, uint8_t addr);
+  void RemoteRegWrite (bool APnDP, uint8_t addr, uint32_t data);
+  uint32_t RemoteAPRead (uint8_t addr, uint8_t ap = -1);
+  void RemoteAPWrite (uint8_t addr, uint32_t data, uint8_t ap = -1);
+  void RemoteAHBAP (uint8_t ap);
+  
+  // Direct remote memory access (not dependent on bridge mapping)
+  uint32_t RemoteReadW (uint32_t addr);
+  void RemoteWriteW (uint32_t addr, uint32_t data);
+  
+  // Remote bridge mapping
+  void RemoteRemap32M (uint8_t idx, uint8_t remap);
+  uint8_t RemoteRemap32M (uint8_t idx);
+  void RemoteRemap256M (uint8_t remap);
+  uint8_t RemoteRemap256M (void);
 };
 
 #endif /* TARGET_H */

@@ -30,10 +30,6 @@ Target::Target (char *id)
 
 Target::~Target ()
 {
-  // Disable slave interface
-  //SlaveEn (false);
-  //SlaveUnregister ();
-
   // Delete CSR classes
   delete csr;
     
@@ -189,4 +185,176 @@ void Target::MemoryAlias (uint32_t base, uint32_t size, uint32_t redirect)
     csr->sys_remap0_end (base + size);
     csr->sys_remap0_off (redirect);
   }
+}
+
+
+uint8_t Target::RemoteStat (void)
+{
+  return csr->brg_stat ();
+}
+
+const char *Target::RemoteStatStr (void)
+{
+  switch (csr->brg_stat ()) {
+    case SUCCESS: return "SUCCESS";
+    case ERR_FAULT: return "ERR_FAULT";
+    case ERR_PARITY: return "ERR_PARITY";
+    case ERR_TIMEOUT: return "ERR_TIMEOUT";
+    case ERR_NOMEMAP: return "ERR_NOMEMAP";
+    case ERR_UNSUPSZ: return "ERR_UNSUPSZ";
+    default: return "ERR_UNKNOWN";
+  }
+}
+
+void Target::RemoteTimeout (int timeout)
+{
+  remote_timeout = timeout;
+}
+
+void Target::RemoteEn (bool en)
+{
+  csr->brg_en (en);
+}
+
+bool Target::RemoteEn (void)
+{
+  return csr->brg_en ();
+}
+
+void Target::RemoteClkDiv (uint8_t div)
+{
+  csr->brg_clkdiv (div & 7);
+}
+
+uint8_t Target::RemoteClkDiv (void)
+{
+  return csr->brg_clkdiv ();
+}
+
+uint32_t Target::RemoteIDCODE (void)
+{
+  return csr->brg_idcode ();
+}
+
+uint32_t Target::RemoteRegRead (bool APnDP, uint8_t addr)
+{
+  int n = remote_timeout;
+  
+  // CTRL = APnDP, ADDR[1:0], WRnRD, START=1/DONE=0
+  if (APnDP)
+    csr->brg_ctrl ((1 << 4) | (addr & 0xc) | 1);
+  else
+    csr->brg_ctrl ((addr & 0xc) | 1);
+
+  // Wait until command is complete
+  while ((csr->brg_ctrl () & 1) && n)
+    n--;
+  
+  // Return data read
+  return n ? csr->brg_data () : 0;
+}
+
+void Target::RemoteRegWrite (bool APnDP, uint8_t addr, uint32_t data)
+{
+  int n = remote_timeout;
+
+  // Setup data
+  csr->brg_data (data);
+  
+  // CTRL = APnDP, ADDR[1:0], WRnRD, START=1/DONE=0
+  if (APnDP)
+    csr->brg_ctrl ((1 << 4) | (addr & 0xc) | 3);
+  else
+    csr->brg_ctrl ((addr & 0xc) | 3);
+
+  // Wait until command is complete
+  while ((csr->brg_ctrl () & 1) && n)
+    n--;
+}
+
+uint32_t Target::RemoteAPRead (uint8_t addr, uint8_t ap)
+{
+  // Update AP if specified
+  if (ap != 255)
+    apsel = ap;
+  
+  // Select address using DP-select
+  RemoteRegWrite (false, 8, (apsel << 24) | addr);
+
+  // Read from AP - Must read RDBUFF after
+  (void)RemoteRegRead (true, addr & 0xc);
+
+  // Read buffer (RDBUFF)
+  return RemoteRegRead (false, 0xc);
+}
+
+void Target::RemoteAPWrite (uint8_t addr, uint32_t data, uint8_t ap)
+{
+  // Update AP if specified
+  if (ap != 255)
+    apsel = ap;
+  
+  // Select address using DP-select
+  RemoteRegWrite (false, 8, (apsel << 24) | addr);
+
+  // Write to AP
+  RemoteRegWrite (true, addr & 0xc, data);
+}
+
+void Target::RemoteAHBAP (uint8_t ap)
+{
+  // Save AP as AHB bridge AP
+  csr->brg_apsel (ap);
+}
+
+uint32_t Target::RemoteReadW (uint32_t addr)
+{
+  // Setup CSW for word access
+  RemoteAPWrite (0, 0xA2000002);
+
+  // Setup address in TAR
+  RemoteAPWrite (4, addr);
+
+  // Wait for any previous transactions to finish
+  while ((RemoteAPRead (0) & 0xC0) != 0x40)
+  ;
+
+  // Read from DRW
+  return RemoteAPRead (0xc);
+}
+
+void Target::RemoteWriteW (uint32_t addr, uint32_t data)
+{
+  // Setup CSW for word access
+  RemoteAPWrite (0, 0xA2000002);
+
+  // Setup address in TAR
+  RemoteAPWrite (4, addr);
+
+  // Wait for any previous transactions to finish
+  while ((RemoteAPRead (0) & 0xC0) != 0x40)
+    ;
+
+  // Write to DRW
+  RemoteAPWrite (0xc, data);
+}
+
+void Target::RemoteRemap32M (uint8_t idx, uint8_t remap)
+{
+
+}
+
+uint8_t Target::RemoteRemap32M (uint8_t idx)
+{
+  return 0;
+}
+
+void Target::RemoteRemap256M (uint8_t remap)
+{
+
+}
+
+uint8_t Target::RemoteRemap256M (void)
+{
+  return 0;
 }

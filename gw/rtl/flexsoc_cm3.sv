@@ -27,6 +27,12 @@ module flexsoc_cm3
      output SWDOUT,
      output SWDOUTEN,
 
+     // SWD bridge
+     input  BRG_SWDIN,
+     output BRG_SWDOUT,
+     output BRG_SWDOE,
+     output BRG_SWDCLK,
+     
      // Host interface
      output UART_TX,
      input  UART_RX
@@ -81,9 +87,11 @@ module flexsoc_cm3
    wire [31:0] cm3_code_haddr;
    wire [31:0] code_remap0, code_remap1;
    
-   assign ahb3_cm3_code_HADDR = ((cm3_code_haddr >= code_remap0_base_o) && (cm3_code_haddr < code_remap0_end_o)) ?
+   assign ahb3_cm3_code_HADDR = ((cm3_code_haddr >= code_remap0_base_o) && 
+                                 (cm3_code_haddr < code_remap0_end_o)) ?
                                 (cm3_code_haddr - code_remap0_base_o) + code_remap0_off_o : 
-                                (((cm3_code_haddr >= code_remap1_base_o) && (cm3_code_haddr < code_remap1_end_o)) ?
+                                (((cm3_code_haddr >= code_remap1_base_o) && 
+                                  (cm3_code_haddr < code_remap1_end_o)) ?
                                  (cm3_code_haddr - code_remap1_base_o) + code_remap1_off_o
                                  : cm3_code_haddr);
    assign code_remap0_base_i = code_remap0_base_o;
@@ -94,8 +102,10 @@ module flexsoc_cm3
    assign code_remap1_off_i = code_remap1_off_o;
 
    wire [31:0] cm3_sys_haddr;
-   assign ahb3_cm3_sys_HADDR = ((cm3_sys_haddr >= sys_remap0_base_o) && (cm3_sys_haddr < sys_remap0_end_o)) ?
-                                (cm3_sys_haddr - sys_remap0_base_o) + sys_remap0_off_o : cm3_sys_haddr;
+   assign ahb3_cm3_sys_HADDR = ((cm3_sys_haddr >= sys_remap0_base_o) &&
+                                (cm3_sys_haddr < sys_remap0_end_o)) ?
+                                (cm3_sys_haddr - sys_remap0_base_o) + sys_remap0_off_o 
+                               : cm3_sys_haddr;
    assign sys_remap0_base_i = sys_remap0_base_o;
    assign sys_remap0_end_i = sys_remap0_end_o;
    assign sys_remap0_off_i = sys_remap0_off_o;
@@ -150,8 +160,69 @@ module flexsoc_cm3
                 .HREADY    (ahb3_ram_HREADY),
                 .HRESP     (ahb3_ram_HRESP)
                 );
-  
 
+   // Loop output back to input where necessary
+   assign brg_en_i = brg_en_o;
+   assign brg_clkdiv_i = brg_clkdiv_o;   
+   assign brg_ahb_en_i = brg_ahb_en_o;
+   assign brg_apsel_i = brg_apsel_o;
+   assign brg_remap32_i[0] = brg_remap32_o[0];
+   assign brg_remap32_i[1] = brg_remap32_o[1];
+   assign brg_remap256_i = brg_remap256_o;
+   assign brg_irq_scanen_i = brg_irq_scanen_o;
+   assign brg_irq_mask_i[0] = brg_irq_mask_o[0];
+   assign brg_irq_mask_i[1] = brg_irq_mask_o[1];
+   assign brg_irq_len_i = brg_irq_len_o;
+   assign brg_irq_off_i = brg_irq_off_o;
+           
+   // Remote bridge to target
+   ahb3lite_remote_bridge
+     #( .BASE_ADDR (32'h8000_0000))
+   u_remote (
+             // Clock and reset
+             .CLK          (CLK),
+             .RESETn       (PORESETn),
+
+             // Interface
+             .EN           (brg_en_o),
+             .CLKDIV       (brg_clkdiv_o),
+             .CTRLI        (brg_ctrl_o),
+             .CTRLO        (brg_ctrl_i),
+             .DATI         (brg_data_o),
+             .DATO         (brg_data_i),
+             .STAT         (brg_stat),
+             .AHB_EN       (brg_ahb_en_o),
+             .AHB_APSEL    (brg_apsel_o),
+             .IDCODE       (brg_idcode),
+             .REMAP32M     ({brg_remap32_o[1], brg_remap32_o[0]}),
+             .REMAP256M    (brg_remap256_o),
+             .IRQ_SCAN_EN  (brg_irq_scanen_o),
+             .IRQ_MASK     ({64'h0, brg_irq_mask_o[1], brg_irq_mask_o[0]}),
+             .IRQ_LEN      (brg_irq_len_o),
+             .IRQ_OFF      (brg_irq_off_o),
+             .IRQ          (),
+             
+             // AHB3 slave interface
+             .HSEL         (ahb3_brg_HSEL),
+             .HADDR        (ahb3_brg_HADDR),
+             .HWDATA       (ahb3_brg_HWDATA),
+             .HRDATA       (ahb3_brg_HRDATA),
+             .HWRITE       (ahb3_brg_HWRITE),
+             .HSIZE        (ahb3_brg_HSIZE),
+             .HBURST       (ahb3_brg_HBURST),
+             .HPROT        (ahb3_brg_HPROT),
+             .HTRANS       (ahb3_brg_HTRANS),
+             .HREADYOUT    (ahb3_brg_HREADYOUT),
+             .HREADY       (ahb3_brg_HREADY),
+             .HRESP        (ahb3_brg_HRESP),
+
+             // SWD bridge bus
+             .SWDIN        (BRG_SWDIN),
+             .SWDOUT       (BRG_SWDOUT),
+             .SWDOE        (BRG_SWDOE),
+             .SWDCLK       (BRG_SWDCLK)
+             );
+   
    // Master <=> arbiter
    wire master_RDEN, master_WREN, master_WRFULL, master_RDEMPTY;
    wire [7:0] master_RDDATA, master_WRDATA;
