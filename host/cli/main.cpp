@@ -104,11 +104,11 @@ static struct argp_option options[] = {
                                        {"path",    'p', "DIR", 0,  "Plugin search path\nmultiple path opts supported"},
                                        
                                        {0, 0, 0, 0, "Remote:", 2},
-                                       {"remote",  'r', "0-7", OPTION_ARG_OPTIONAL, "Connect remote: Opt clk divisor: 0-7"},
+                                       {"remote",  'r', "0-31", OPTION_ARG_OPTIONAL, "Connect remote: Opt clk divisor"},
                                        {"halt",    'h', 0, 0, "Do NOT halt remote CPU (default=halt CPU)"},
                                        {0, 0, 0, 0, "Debugging:", 3},
                                        {"gdb", 'g', 0, 0,  "Leave processor in reset until GDB attaches"},
-                                       {"verbose", 'v', "INT", 0,  "verbosity level (0-3)"},
+                                       {"verbose", 'v', "INT", 0,  "verbosity level (0-4)"},
                                        {0}
 };
 

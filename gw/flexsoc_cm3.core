@@ -108,7 +108,7 @@ generate:
                     width: 1
                     type: rw
                 brg_clkdiv:
-                    width: 3
+                    width: 5
                     type: rw
                 brg_ctrl:
                     width: 5
