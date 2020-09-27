@@ -59,6 +59,12 @@ generate:
                 memory_id:
                     width: 32
                     type: ro
+                core_freq:
+                    width: 32
+                    type: ro
+                brg_base:
+                    width: 32
+                    type: ro
                 slave_en:
                     width: 1
                     type: rw
@@ -66,33 +72,26 @@ generate:
                     width: 1
                     type: rw
                 # Code REMAP0
-                code_remap0_base:
+                code_remap_base:
                     width: 32
                     type: rw
-                code_remap0_end:
+                    count: 2
+                code_remap_end:
                     width: 32
                     type: rw
-                code_remap0_off:
+                    count: 2
+                code_remap_off:
                     width: 32
                     type: rw
-                # Code REMAP1
-                code_remap1_base:
-                    width: 32
-                    type: rw
-                code_remap1_end:
-                    width: 32
-                    type: rw
-                code_remap1_off:
-                    width: 32
-                    type: rw
+                    count: 2
                 # Sys REMAP
-                sys_remap0_base:
+                sys_remap_base:
                     width: 32
                     type: rw
-                sys_remap0_end:
+                sys_remap_end:
                     width: 32
                     type: rw
-                sys_remap0_off:
+                sys_remap_off:
                     width: 32
                     type: rw                
                 # IRQ control
@@ -182,7 +181,7 @@ targets:
     default: &base
         generate: [flexsoc_csr, soc_intercon]
         filesets: [generator_deps, rtl, support]
-        parameters: [XILINX_ENC_CM3=0,ROM_SZ,RAM_SZ]
+        parameters: [XILINX_ENC_CM3=0,ROM_SZ,RAM_SZ,REMOTE_BASE]
 
     lint:
         <<: *base
@@ -198,6 +197,7 @@ targets:
         default_tool: verilator
         filesets_append: [verilator_tb]
         toplevel: [flexsoc_cm3]
+        parameters: [XILINX_ENC_CM3=0,ROM_SZ,RAM_SZ,REMOTE_BASE,CORE_FREQ]
         tools:
             verilator:
                 verilator_options: [-sv, --cc, --trace, --clk, CLK]
@@ -209,7 +209,7 @@ targets:
         description: Synthesize flexsoc_cm3 for Digilent Arty-A35T
         default_tool: vivado
         filesets_append: [arty_top, cm3_full_dep, arty_constraints]
-        parameters: [XILINX_ENC_CM3=1,ROM_SZ,RAM_SZ]
+        parameters: [XILINX_ENC_CM3=1,ROM_SZ,RAM_SZ,REMOTE_BASE]
         toplevel: [arty_top]
         tools:
             vivado:
@@ -238,3 +238,16 @@ parameters:
         default: 65536
         description: Set size of RAM
         paramtype: vlogparam
+
+    REMOTE_BASE:
+        datatype: int
+        default: 0x80000000
+        description: Remote bridge base
+        paramtype: vlogparam
+
+    CORE_FREQ:
+        datatype: int
+        default: 50000000
+        description: Core CPU frequency
+        paramtype: vlogparam
+        

@@ -85,7 +85,7 @@ static int parse_opts (int key, char *arg, struct argp_state *state)
       
     // Check arguments
     case ARGP_KEY_END:
-      if ((args.load_cnt == 0) || !args.device)
+      if (!args.device)
         argp_usage (state);
       break;
       

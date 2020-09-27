@@ -11,6 +11,7 @@
 #include "flexsoc.h"
 #include "hwreg.h"
 #include "err.h"
+#include "log.h"
 
 // Singleton pointer
 Target *Target::inst = NULL;
@@ -142,6 +143,11 @@ uint32_t Target::MemoryID (void)
   return csr->memory_id ();
 }
 
+uint32_t Target::CoreFreq (void)
+{
+  return csr->core_freq ();
+}
+
 void Target::CPUReset (bool reset)
 {
   csr->cpu_reset (reset);
@@ -162,31 +168,59 @@ bool Target::SlaveEn (void)
   return csr->slave_en ();
 }
 
-void Target::MemoryAlias (uint32_t base, uint32_t size, uint32_t redirect)
+
+int Target::CodeAliasSet (uint8_t idx, alias_t *alias)
 {
-  // Code bus
-  if (base < 0x20000000) {
-    // Check if remap0 is used
-    if (csr->code_remap0_base() == 0) {
-      csr->code_remap0_base (base);
-      csr->code_remap0_end (base + size);
-      csr->code_remap0_off (redirect);
-    }
-    // Use remap1
-    else {
-      csr->code_remap1_base (base);
-      csr->code_remap1_end (base + size);
-      csr->code_remap1_off (redirect);
-    }
-  }
-  // Sys bus
-  else {
-    csr->sys_remap0_base (base);
-    csr->sys_remap0_end (base + size);
-    csr->sys_remap0_off (redirect);
-  }
+  if (!alias || (idx > 1))
+    return -1;
+
+  // Setup alias
+  csr->code_remap_base (idx, alias->base);
+  csr->code_remap_end (idx, alias->base + alias->size);
+  csr->code_remap_off (idx, alias->remap);
+  return 0;
 }
 
+int Target::SysAliasSet (uint8_t idx, alias_t *alias)
+{
+  if (!alias || (idx > 0))
+    return -1;
+
+  // Setup alias
+  csr->sys_remap_base (alias->base);
+  csr->sys_remap_end (alias->base + alias->size);
+  csr->sys_remap_off (alias->remap);
+  return 0;
+}
+
+int Target::CodeAliasGet (uint8_t idx, alias_t *alias)
+{
+  if (!alias || (idx > 1))
+    return -1;
+
+  // Get values
+  alias->base = csr->code_remap_base (idx);
+  alias->size = csr->code_remap_end (idx) - csr->code_remap_base (idx);
+  alias->remap = csr->code_remap_off (idx);
+  return 0;
+}
+
+int Target::SysAliasGet (uint8_t idx, alias_t *alias)
+{
+  if (!alias || (idx > 0))
+    return -1;
+
+  // Get values
+  alias->base = csr->sys_remap_base ();
+  alias->size = csr->sys_remap_end () - csr->sys_remap_base ();
+  alias->remap = csr->sys_remap_off ();
+  return 0;
+}
+
+uint32_t Target::RemoteBase (void)
+{
+  return csr->brg_base ();
+}
 
 uint8_t Target::RemoteStat (void)
 {
@@ -339,22 +373,50 @@ void Target::RemoteWriteW (uint32_t addr, uint32_t data)
   RemoteAPWrite (0xc, data);
 }
 
-void Target::RemoteRemap32M (uint8_t idx, uint8_t remap)
+void Target::RemoteAHBEn (bool en)
 {
-
+  csr->brg_ahb_en (en);
 }
 
-uint8_t Target::RemoteRemap32M (uint8_t idx)
+void Target::RemoteRemap32M (uint8_t idx, uint32_t remap)
 {
-  return 0;
+  uint32_t v;
+  
+  // Verify only top 4 bits set
+  if (remap & 0x01FFFFFF) {
+    log (LOG_ERR, "-- remap32[%d] invalid address = 0x%08X", idx, remap);
+    log (LOG_ERR, "-- remap32[%d] address mask    = 0xFE000000", idx);
+    return;
+  }
+
+  // RMW remap reg
+  v = csr->brg_remap32 (idx >> 2);
+  v &= ~(0xff << ((idx & 3) * 8));
+  v |= ((remap >> 24) & 0xfe) << ((idx & 3) * 8);
+  
+  // Setup remap
+  csr->brg_remap32 (idx >> 2, v);
 }
 
-void Target::RemoteRemap256M (uint8_t remap)
+uint32_t Target::RemoteRemap32M (uint8_t idx)
 {
-
+  return (csr->brg_remap32(idx >> 2) >> ((idx & 3) * 8)) << 24;
 }
 
-uint8_t Target::RemoteRemap256M (void)
+void Target::RemoteRemap256M (uint32_t remap)
 {
-  return 0;
+  // Verify only top 4 bits set
+  if (remap & 0xFFFFFFF) {
+    log (LOG_ERR, "-- remap256 invalid address = 0x%08X", remap);
+    log (LOG_ERR, "-- remap256 address mask    = 0xF0000000");
+    return;
+  }
+  
+  // Set remap
+  csr->brg_remap256 (remap >> 28);
+}
+
+uint32_t Target::RemoteRemap256M (void)
+{
+  return csr->brg_remap256 () << 28;
 }

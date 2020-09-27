@@ -14,6 +14,7 @@
 
 // CSW config word
 #define CSW_CFG_WORD 0xA2000002
+#define CSW_CFG_BYTE 0xA2000000
 #define DEBUG_HALT   0xA05F0003
 
 // Address to halt
@@ -80,14 +81,14 @@ int remote_open (uint8_t div, bool halt)
   
   // Read IDcode of DP to check if valid
   idcode = targ->RemoteIDCODE ();
-  log (LOG_NORMAL, "Remote connected - %s %s DPv%d [%08X]",
+  log (LOG_NORMAL, "Remote connected - %s %s DPv%d [%08X] @ %.03fMHz",
        jedec_manufacturer ((idcode >> 1) & 0xff),
        debugport_id ((idcode >> 12) & 0xffff),
        (idcode >> 12) & 0xf,
-       idcode);
+       idcode, (float)(targ->CoreFreq() / ((div + 1) * 2))/1000000);
 
   // Enable debugger
-  log_nonl (LOG_DEBUG, "  Enable debugger... ");
+  log_nonl (LOG_DEBUG, "  Enable debug... ");
   targ->RemoteRegWrite (false, DP_CTLSTAT, 0x50000000); n = timeout;
   while ((targ->RemoteRegRead (false, DP_CTLSTAT) != 0xf0000000) && n)
     n--;
@@ -115,8 +116,8 @@ int remote_open (uint8_t div, bool halt)
       apsel = i;
   }
 
-  // Write AP for bridge use (and future access)
-  if (apsel == 255) {
+  // Check if we failed to find MEM-AP
+  if (apsel == 256) {
     log (LOG_ERR, "  Failed to find MEM-AP!");
     return -1;
   }
@@ -149,13 +150,16 @@ int remote_open (uint8_t div, bool halt)
   else
     log (LOG_NORMAL, "  Remote CPU left running...");
 
-  // Write RAM, read RAM
-  targ->RemoteWriteW (0x20000000, 0xdeadc0de);
-  log (LOG_NORMAL, "Remote: 0x20000000 = %08X", targ->RemoteReadW (0x20000000));
-
+  // Check if byte/hwrd access is supported
+  targ->RemoteAPWrite (AP_CSW, CSW_CFG_BYTE);
+  if ((targ->RemoteAPRead (AP_CSW) & 3) != 0) {
+    log (LOG_NORMAL, "  -- BYTE/HWRD access not supported on remote.");
+    log (LOG_NORMAL, "  -- AHB bridge will not work for these accesses");
+  }
+  
   // Set mem-ap for remote bridge
   targ->RemoteAHBAP (apsel);
-
+  
   // Success
   return 0;
 }
@@ -165,7 +169,10 @@ void remote_close (void)
   // Get target pointer
   Target *targ = Target::Ptr ();
 
-  // Enable remote interface
+  // Disable bridge
+  targ->RemoteAHBEn (false);
+
+  // Disable remote interface
   targ->RemoteEn (false);
 }
 

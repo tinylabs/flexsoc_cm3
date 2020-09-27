@@ -11,7 +11,8 @@ module arty_top
     parameter XILINX_ENC_CM3       = 0,
     parameter ROM_SZ               = 0,
     parameter RAM_SZ               = 0,
-    parameter ROM_FILE             = ""
+    parameter ROM_FILE             = "",
+    parameter REMOTE_BASE          = 0
     )(
       input  CLK_100M,
       input  RESET,
@@ -62,6 +63,9 @@ module arty_top
    generate
       if (XILINX_ENC_CM3) begin : gen_pll
          
+         // Encrypted CM3 core can support 50MHz HCLK
+         `define CORE_FREQ 50_000_000
+         
          // Full CM3 core PLL timing
          PLLE2_BASE #(
                       .BANDWIDTH ("OPTIMIZED"),
@@ -93,6 +97,8 @@ module arty_top
       else begin : gen_pll
 
          // Obsfucated CM3 core can only support 32MHz HCLK
+         `define CORE_FREQ 32_000_000
+         
          PLLE2_BASE #(
                       .BANDWIDTH ("OPTIMIZED"),
                       .CLKFBOUT_MULT (16),
@@ -149,10 +155,12 @@ module arty_top
    // Instantiate SoC
    flexsoc_cm3
      #(
+       .CORE_FREQ            (`CORE_FREQ),
        .XILINX_ENC_CM3       (XILINX_ENC_CM3),
        .ROM_SZ               (ROM_SZ),
        .RAM_SZ               (RAM_SZ),
-       .ROM_FILE             (ROM_FILE)
+       .ROM_FILE             (ROM_FILE),
+       .REMOTE_BASE          (REMOTE_BASE)
        )
    u_soc (
           .CLK           (hclk),

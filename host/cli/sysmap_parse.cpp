@@ -105,7 +105,7 @@ static uint32_t parse_uint (const char *str)
 
 int sysmap_parse (const char *map, BusPeripheral ***bp, int *cnt)
 {
-  int rv;
+  int rv = 0;
   
   // Make sure bp and cnt are valid
   if (!bp || !cnt)
@@ -125,8 +125,7 @@ int sysmap_parse (const char *map, BusPeripheral ***bp, int *cnt)
   string line;
   
   // Print out map header
-  log (LOG_NORMAL, "Virtual Map");
-  log (LOG_NORMAL, "-----------");
+  log (LOG_NORMAL, "Plugin Map:");
 
   // Loop over each line
   while (getline (file, line)) {
@@ -162,30 +161,72 @@ int sysmap_parse (const char *map, BusPeripheral ***bp, int *cnt)
     }
     else {
       log (LOG_ERR, "Invalid line [%s]", line);
-      return -1;
+      rv = -1;
+      goto cleanup;
     }
 
     // Analyze parts
     if ((tokens.size () < 1) || (tokens.size () > 4)) {
       log (LOG_ERR, "Invalid line [%s]", line);
-      return -1;
+      rv = -1;
+      goto cleanup;
     }
 
     // Handle builtin functions
     if (plugin == "alias") {
-
-      if (tokens.size () != 3)
-        log (LOG_ERR, "Invalid alias args: alias@base:size:redirect");
-
-      log (LOG_DEBUG, "[alias] 0x%08X => 0x%08X (size=0x%X)",
-           parse_uint (addr.c_str ()),
-           parse_uint (tokens[2].c_str ()),
-           parse_uint (tokens[1].c_str ()));
+      alias_t alias;
+      uint8_t idx = 0;
       
-      // Configure memory alias, if on same bus as previous it will be overwritten
-      target->MemoryAlias (parse_uint (addr.c_str ()),
-                           parse_uint (tokens[1].c_str ()),
-                           parse_uint (tokens[2].c_str ()));
+      if (tokens.size () != 3) {
+        log (LOG_ERR, "Invalid alias: alias@base:size:redirect");
+        rv = -1;
+        goto cleanup;
+      }
+      
+      // Configure memory alias
+      if (parse_uint (addr.c_str ()) < 0x20000000) {
+        if (target->CodeAliasGet (idx, &alias))
+          log (LOG_ERR, "Failed to get code alias[%d]", idx);
+
+        // Check if alias used
+        if (alias.base != 0)
+          idx++;
+      }
+      
+      // Setup alias
+      alias.base = parse_uint (addr.c_str ());
+      alias.size = parse_uint (tokens[1].c_str ());
+      alias.remap = parse_uint (tokens[2].c_str ());
+
+      // Configure registers
+      if (alias.base < 0x20000000) {
+        if (target->CodeAliasSet (idx, &alias))
+          log (LOG_ERR, "Failed to set code alias %d", idx);
+      }
+      else {
+        if (target->SysAliasSet (idx, &alias))
+          log (LOG_ERR, "Failed to set code alias %d", idx);
+      }
+    }
+    else if (plugin == "remap32") {
+      if ((tokens.size () != 2) || (stoi (addr) < 0) || (stoi (addr) > 7)) {
+        log (LOG_ERR, "Invalid remap32: remap32@<0-7>:<remote addr>");
+        rv = -1;
+        goto cleanup;
+      }
+
+      // Configure remote mapping
+      target->RemoteRemap32M (parse_uint (addr.c_str()), parse_uint (tokens[1].c_str()));
+    }
+    else if (plugin == "remap256") {
+      if (tokens.size () != 1) {
+        log (LOG_ERR, "Invalid remap256: remap32@<remote addr>");
+        rv = -1;
+        goto cleanup;
+      }
+
+      // Configure remote mapping
+      target->RemoteRemap256M (parse_uint (addr.c_str ()));
     }
     else {
       
@@ -197,7 +238,8 @@ int sysmap_parse (const char *map, BusPeripheral ***bp, int *cnt)
 
       if (!obj) {
         log (LOG_ERR, "Plugin not found: %s", plugin);
-        return -1;
+        rv = -1;
+        goto cleanup;
       }
 
       // Handle bus peripherals
@@ -217,8 +259,10 @@ int sysmap_parse (const char *map, BusPeripheral ***bp, int *cnt)
         
         // Add to peripheral array
         *bp = (BusPeripheral **)realloc (*bp, sizeof (BusPeripheral *) * (*cnt + 1));
-        if (!*bp)
-          return -1;
+        if (!*bp) {
+          rv = -1;
+          goto cleanup;
+        }
         (*bp)[(*cnt)++] = p;
         
         // Print out
@@ -233,9 +277,15 @@ int sysmap_parse (const char *map, BusPeripheral ***bp, int *cnt)
     }
   }
 
-  // Close file
-  file.close ();  
-  return 0;
+  cleanup:
+    
+    // Close file
+    file.close ();
+    
+    if (rv)
+      delete ptarget;
+    
+    return rv;
 }
 
 void sysmap_cleanup (void)

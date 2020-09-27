@@ -17,6 +17,7 @@
 #include "log.h"
 
 // Read transfer size
+//#define READ_SEND_SZ   (2)
 #define READ_SEND_SZ   (180)
 #define WRITE_SEND_SZ  (READ_SEND_SZ * 5)
 

@@ -8,11 +8,12 @@
 
 module flexsoc_cm3
   #(
+    parameter CORE_FREQ      = 0,
     parameter XILINX_ENC_CM3 = 0,
     parameter ROM_SZ         = 0,
     parameter RAM_SZ         = 0,
-    parameter FLASH_SZ       = 0,
-    parameter ROM_FILE       = ""
+    parameter ROM_FILE       = "",
+    parameter REMOTE_BASE    = 0
   ) (
      // Clock and reset
      input  CLK,
@@ -60,6 +61,8 @@ module flexsoc_cm3
    assign slave_en_i = slave_en_o;
    assign flexsoc_id = 32'hf1ec50c1;
    assign memory_id = (ROM_SZ >> 10) | ((RAM_SZ >> 10) << 16);
+   assign core_freq = CORE_FREQ;
+   assign brg_base = REMOTE_BASE;
 
    // CPU reset controller
    logic        cpureset_n, sysresetreq;
@@ -84,31 +87,29 @@ module flexsoc_cm3
      end
 
    // Redirect AHB3 master addresses
-   wire [31:0] cm3_code_haddr;
-   wire [31:0] code_remap0, code_remap1;
-   
-   assign ahb3_cm3_code_HADDR = ((cm3_code_haddr >= code_remap0_base_o) && 
-                                 (cm3_code_haddr < code_remap0_end_o)) ?
-                                (cm3_code_haddr - code_remap0_base_o) + code_remap0_off_o : 
-                                (((cm3_code_haddr >= code_remap1_base_o) && 
-                                  (cm3_code_haddr < code_remap1_end_o)) ?
-                                 (cm3_code_haddr - code_remap1_base_o) + code_remap1_off_o
+   wire [31:0] cm3_code_haddr;   
+   assign ahb3_cm3_code_HADDR = ((cm3_code_haddr >= code_remap_base_o[0]) && 
+                                 (cm3_code_haddr < code_remap_end_o[0])) ?
+                                (cm3_code_haddr - code_remap_base_o[0]) + code_remap_off_o[0] : 
+                                (((cm3_code_haddr >= code_remap_base_o[1]) && 
+                                  (cm3_code_haddr < code_remap_end_o[1])) ?
+                                 (cm3_code_haddr - code_remap_base_o[1]) + code_remap_off_o[1]
                                  : cm3_code_haddr);
-   assign code_remap0_base_i = code_remap0_base_o;
-   assign code_remap0_end_i = code_remap0_end_o;
-   assign code_remap0_off_i = code_remap0_off_o;
-   assign code_remap1_base_i = code_remap1_base_o;
-   assign code_remap1_end_i = code_remap1_end_o;
-   assign code_remap1_off_i = code_remap1_off_o;
+   assign code_remap_base_i[0] = code_remap_base_o[0];
+   assign code_remap_end_i[0]  = code_remap_end_o[0];
+   assign code_remap_off_i[0]  = code_remap_off_o[0];
+   assign code_remap_base_i[1] = code_remap_base_o[1];
+   assign code_remap_end_i[1]  = code_remap_end_o[1];
+   assign code_remap_off_i[1]  = code_remap_off_o[1];
 
    wire [31:0] cm3_sys_haddr;
-   assign ahb3_cm3_sys_HADDR = ((cm3_sys_haddr >= sys_remap0_base_o) &&
-                                (cm3_sys_haddr < sys_remap0_end_o)) ?
-                                (cm3_sys_haddr - sys_remap0_base_o) + sys_remap0_off_o 
+   assign ahb3_cm3_sys_HADDR = ((cm3_sys_haddr >= sys_remap_base_o) &&
+                                (cm3_sys_haddr < sys_remap_end_o)) ?
+                                (cm3_sys_haddr - sys_remap_base_o) + sys_remap_off_o 
                                : cm3_sys_haddr;
-   assign sys_remap0_base_i = sys_remap0_base_o;
-   assign sys_remap0_end_i = sys_remap0_end_o;
-   assign sys_remap0_off_i = sys_remap0_off_o;
+   assign sys_remap_base_i = sys_remap_base_o;
+   assign sys_remap_end_i  = sys_remap_end_o;
+   assign sys_remap_off_i  = sys_remap_off_o;
    
    // Instantiate ROM
    ahb3lite_sram1rw
@@ -177,7 +178,7 @@ module flexsoc_cm3
            
    // Remote bridge to target
    ahb3lite_remote_bridge
-     #( .BASE_ADDR (32'h8000_0000))
+     #( .BASE_ADDR (REMOTE_BASE))
    u_remote (
              // Clock and reset
              .CLK          (CLK),

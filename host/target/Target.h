@@ -27,6 +27,13 @@ typedef enum
    ERR_UNKNOWN = 7,
   } remote_stat_t;
 
+// Aliasing memory structure
+typedef struct {
+  uint32_t base;
+  uint32_t size;
+  uint32_t remap;
+} alias_t;
+
 class Target {
 
   static Target *inst;
@@ -71,15 +78,20 @@ private:
   // Access CSRs
   uint32_t FlexsocID (void);
   uint32_t MemoryID (void);
+  uint32_t CoreFreq (void);
   void CPUReset (bool reset);
   bool CPUReset (void);
   void SlaveEn (bool en);
   bool SlaveEn (void);
 
-  // Memory bus aliasing
-  void MemoryAlias (uint32_t base, uint32_t size, uint32_t redirect);
-
+  // Local memory bus aliasing
+  int CodeAliasSet (uint8_t idx, alias_t *alias);
+  int SysAliasSet (uint8_t idx, alias_t *alias);
+  int CodeAliasGet (uint8_t idx, alias_t *alias);
+  int SysAliasGet (uint8_t idx, alias_t *alias);
+  
   // Remote access
+  uint32_t RemoteBase (void);
   void RemoteTimeout (int timeout);
   void RemoteEn (bool en);
   bool RemoteEn (void);
@@ -99,10 +111,11 @@ private:
   void RemoteWriteW (uint32_t addr, uint32_t data);
   
   // Remote bridge mapping
-  void RemoteRemap32M (uint8_t idx, uint8_t remap);
-  uint8_t RemoteRemap32M (uint8_t idx);
-  void RemoteRemap256M (uint8_t remap);
-  uint8_t RemoteRemap256M (void);
+  void RemoteAHBEn (bool en);
+  void RemoteRemap32M (uint8_t idx, uint32_t remap);
+  uint32_t RemoteRemap32M (uint8_t idx);
+  void RemoteRemap256M (uint32_t remap);
+  uint32_t RemoteRemap256M (void);
 };
 
 #endif /* TARGET_H */
