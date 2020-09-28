@@ -61,7 +61,7 @@ int remote_open (uint8_t div, bool halt)
 {
   uint32_t idcode;
   uint8_t apsel = 255;
-  int timeout = 10, i, n;
+  int timeout = 100, i, n;
   float freqMHz;
   
   // Get target pointer
@@ -76,15 +76,20 @@ int remote_open (uint8_t div, bool halt)
   // Enable remote interface
   targ->RemoteEn (true);
 
-  // Wait for connection to complete, inverse to freq
-  usleep (1200000 / freqMHz);
-
+  // Poll IDcode until valid
+  n = timeout;
+  do {
+    idcode = targ->RemoteIDCODE ();
+    n--;
+  } while ((idcode == 0) && n);
+  
   // Check status
-  if (targ->RemoteStat ())
+  if (!n || targ->RemoteStat ()) {
     log (LOG_ERR, "Remote connect failed: %s", targ->RemoteStatStr ());
+    return -1;
+  }
   
   // Read IDcode of DP to check if valid
-  idcode = targ->RemoteIDCODE ();
   log (LOG_NORMAL, "Remote connected - %s %s DPv%d [%08X] @ %.03fMHz",
        jedec_manufacturer ((idcode >> 1) & 0xff),
        debugport_id ((idcode >> 12) & 0xffff),
