@@ -62,9 +62,13 @@ int remote_open (uint8_t div, bool halt)
   uint32_t idcode;
   uint8_t apsel = 255;
   int timeout = 10, i, n;
+  float freqMHz;
   
   // Get target pointer
   Target *targ = Target::Ptr ();
+
+  // Calculate frequency
+  freqMHz = (float)(targ->CoreFreq() / ((div + 1) * 2)) / 1000000;
 
   // Set clock divisor
   targ->RemoteClkDiv (div);
@@ -72,8 +76,8 @@ int remote_open (uint8_t div, bool halt)
   // Enable remote interface
   targ->RemoteEn (true);
 
-  // Wait for connection to complete
-  usleep (500000);
+  // Wait for connection to complete, inverse to freq
+  usleep (1200000 / freqMHz);
 
   // Check status
   if (targ->RemoteStat ())
@@ -85,7 +89,7 @@ int remote_open (uint8_t div, bool halt)
        jedec_manufacturer ((idcode >> 1) & 0xff),
        debugport_id ((idcode >> 12) & 0xffff),
        (idcode >> 12) & 0xf,
-       idcode, (float)(targ->CoreFreq() / ((div + 1) * 2))/1000000);
+       idcode, freqMHz);
 
   // Enable debugger
   log_nonl (LOG_DEBUG, "  Enable debug... ");

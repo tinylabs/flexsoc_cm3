@@ -257,7 +257,7 @@ bool Target::RemoteEn (void)
 
 void Target::RemoteClkDiv (uint8_t div)
 {
-  csr->brg_clkdiv (div & 7);
+  csr->brg_clkdiv (div & 0x1f);
 }
 
 uint8_t Target::RemoteClkDiv (void)
