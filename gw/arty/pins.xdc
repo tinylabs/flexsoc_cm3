@@ -1,24 +1,26 @@
 # Pin placement
 set_property -dict { PACKAGE_PIN E3    IOSTANDARD LVCMOS33 } [get_ports { CLK_100M }];
-set_property -dict { PACKAGE_PIN D9    IOSTANDARD LVCMOS33 } [get_ports { RESET }];   # BTN[0]
-
-# JTAG/SWD
-set_property -dict { PACKAGE_PIN T14   IOSTANDARD LVCMOS33 } [get_ports { TCK_SWDCLK }];  # IO[5]
-set_property -dict { PACKAGE_PIN T15   IOSTANDARD LVCMOS33 } [get_ports { TMS_SWDIO }];   # IO[6]
+set_property -dict { PACKAGE_PIN C2    IOSTANDARD LVCMOS33 } [get_ports { RESETn }];   # CK_RST
 
 # UART
 set_property -dict { PACKAGE_PIN D10   IOSTANDARD LVCMOS33 } [get_ports { UART_TX }]; # FPGA->HOST
 set_property -dict { PACKAGE_PIN A9    IOSTANDARD LVCMOS33 } [get_ports { UART_RX }]; # HOST->FPGA
 
+# Local JTAG/SWD
+set_property -dict { PACKAGE_PIN D15   IOSTANDARD LVCMOS33 } [get_ports { TCK_SWDCLK }]; # Pmod JB[3]
+set_property -dict { PACKAGE_PIN C15   IOSTANDARD LVCMOS33 } [get_ports { TMS_SWDIO }];  # Pmod JB[4]
+
 # Target bridge connection
-set_property -dict { PACKAGE_PIN E15   IOSTANDARD LVCMOS33 } [get_ports { BRG_SWDIO }];  # Pmod JB[0]
-set_property -dict { PACKAGE_PIN D15   IOSTANDARD LVCMOS33 } [get_ports { BRG_SWDCLK }]; # Pmod JB[2]
+set_property -dict { PACKAGE_PIN E15   IOSTANDARD LVCMOS33 } [get_ports { BRG_SWDCLK }]; # Pmod JB[2]
+set_property -dict { PACKAGE_PIN J17   IOSTANDARD LVCMOS33 } [get_ports { BRG_SWDIO }];  # Pmod JB[7]
+# Set pullup to detect when disconnected
+set_property pullup "TRUE" [get_ports { BRG_SWDIO }];
 
 # Ignore timing on async reset
-set_false_path -from [get_ports { RESET }]
+set_false_path -from [get_ports { RESETn }]
 
 # Not sure how to calculate these, set dummy IO delays
-set_input_delay -clock [get_clocks hclk] -add_delay 0.5 [get_ports RESET]
+set_input_delay -clock [get_clocks hclk] -add_delay 0.5 [get_ports RESETn]
 set_input_delay -clock [get_clocks jtag_clk] -add_delay 0.5 [get_ports TMS_SWDIO]
 set_output_delay -clock [get_clocks jtag_clk] -add_delay 0.5 [get_ports TMS_SWDIO]
 set_input_delay -clock [get_clocks transport_clk] -add_delay 0.5 [get_ports UART_RX]

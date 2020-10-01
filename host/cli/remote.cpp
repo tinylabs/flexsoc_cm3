@@ -60,13 +60,19 @@ static const char *ap_idcode (uint8_t id)
 int remote_open (uint8_t div, bool halt)
 {
   uint32_t idcode;
-  uint8_t apsel = 255;
+  uint8_t stat, apsel = 255;
   int timeout = 100, i, n;
   float freqMHz;
   
   // Get target pointer
   Target *targ = Target::Ptr ();
 
+ retry_connect:
+  if (div > 31) {
+    log (LOG_ERR, "Remote connect failed");
+    return -1;
+  }
+  
   // Calculate frequency
   freqMHz = (float)(targ->CoreFreq() / ((div + 1) * 2)) / 1000000;
 
@@ -76,19 +82,28 @@ int remote_open (uint8_t div, bool halt)
   // Enable remote interface
   targ->RemoteEn (true);
 
-  // Poll IDcode until valid
-  n = timeout;
-  do {
-    idcode = targ->RemoteIDCODE ();
-    n--;
-  } while ((idcode == 0) && n);
+  // Wait for interface to come up
+  usleep (1200000 / freqMHz);
+
+  // Read IDCode
+  idcode = targ->RemoteIDCODE ();
   
   // Check status
-  if (!n || targ->RemoteStat ()) {
-    log (LOG_ERR, "Remote connect failed: %s", targ->RemoteStatStr ());
-    return -1;
+  stat = targ->RemoteStat ();
+
+  // Check if not connected
+  if (stat == ERR_NOCONNECT) {
+    log (LOG_NORMAL, "-- Remote DebugPort not found! Check connections.");
+    goto cleanup;
   }
   
+  // If IDcode doesn't look correct retry at lower speed
+  if (stat || (((idcode >> 1) & 0xff) != 0x3b)) {
+    targ->RemoteEn (false);
+    div++;
+    goto retry_connect;
+  }
+
   // Read IDcode of DP to check if valid
   log (LOG_NORMAL, "Remote connected - %s %s DPv%d [%08X] @ %.03fMHz",
        jedec_manufacturer ((idcode >> 1) & 0xff),
@@ -99,11 +114,12 @@ int remote_open (uint8_t div, bool halt)
   // Enable debugger
   log_nonl (LOG_DEBUG, "  Enable debug... ");
   targ->RemoteRegWrite (false, DP_CTLSTAT, 0x50000000); n = timeout;
-  while ((targ->RemoteRegRead (false, DP_CTLSTAT) != 0xf0000000) && n)
+  while (((targ->RemoteRegRead (false, DP_CTLSTAT) >> 28) != 0xf) && n)
     n--;
+
   if (!n) {
     log (LOG_ERR, "remote timeout.");
-    return -1;
+    goto cleanup;
   }
   log (LOG_DEBUG, "SYS|DBG powered up.");
 
@@ -114,7 +130,7 @@ int remote_open (uint8_t div, bool halt)
     uint32_t idr = targ->RemoteAPRead (AP_IDR, i);
     if (idr == 0)
       break;
-    log (LOG_NORMAL, "  [%d] Found: %s %s%s [%08X]", i,
+    log (LOG_NORMAL, "  [%d] Found AP: %s %s%s [%08X]", i,
          jedec_manufacturer ((idr >> 17) & 0x7f),
          ap_idcode (idr & 0xf),
          ((idr >> 13) & 0xf) == 0x8 ? "MEMAP" : "",
@@ -128,7 +144,7 @@ int remote_open (uint8_t div, bool halt)
   // Check if we failed to find MEM-AP
   if (apsel == 256) {
     log (LOG_ERR, "  Failed to find MEM-AP!");
-    return -1;
+    goto cleanup;
   }
 
   // Set CSW for word access
@@ -152,7 +168,7 @@ int remote_open (uint8_t div, bool halt)
     // Check if we succeeded
     if (!n) {
       log (LOG_NORMAL, "timed out.");
-      return -1;
+      goto cleanup;
     }
     log (LOG_NORMAL, "OK.");
   }
@@ -171,6 +187,13 @@ int remote_open (uint8_t div, bool halt)
   
   // Success
   return 0;
+
+  // Cleanup
+ cleanup:
+  // Disable bridge
+  targ->RemoteAHBEn (false);
+  targ->RemoteEn (false);
+  return -1;
 }
   
 void remote_close (void)

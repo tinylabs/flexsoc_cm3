@@ -236,6 +236,7 @@ const char *Target::RemoteStatStr (void)
     case ERR_TIMEOUT: return "ERR_TIMEOUT";
     case ERR_NOMEMAP: return "ERR_NOMEMAP";
     case ERR_UNSUPSZ: return "ERR_UNSUPSZ";
+    case ERR_NOCONNECT: return "ERR_NOTCONNECTED";
     default: return "ERR_UNKNOWN";
   }
 }

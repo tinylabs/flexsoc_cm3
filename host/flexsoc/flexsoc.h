@@ -43,4 +43,7 @@ void flexsoc_unregister (void);
 int flexsoc_read_returnval (void);
 void flexsoc_write_returnval (int val);
 
+// Enable/disable high speed mode
+void flexsoc_hispeed (bool en);
+
 #endif /* FLEXSOC_H */

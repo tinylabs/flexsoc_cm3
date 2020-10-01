@@ -18,13 +18,14 @@
 // Remote stat enum
 typedef enum
   {
-   SUCCESS     = 0,
-   ERR_FAULT   = 1,
-   ERR_PARITY  = 2,
-   ERR_TIMEOUT = 3,
-   ERR_NOMEMAP = 4,
-   ERR_UNSUPSZ = 5,
-   ERR_UNKNOWN = 7,
+   SUCCESS       = 0,
+   ERR_FAULT     = 1,
+   ERR_TIMEOUT   = 2,
+   ERR_NOCONNECT = 3,
+   ERR_PARITY    = 4,
+   ERR_NOMEMAP   = 5,
+   ERR_UNSUPSZ   = 6,
+   ERR_UNKNOWN   = 7,
   } remote_stat_t;
 
 // Aliasing memory structure

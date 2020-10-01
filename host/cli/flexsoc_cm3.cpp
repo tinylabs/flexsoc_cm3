@@ -77,7 +77,7 @@ int flexsoc_cm3 (args_t *args)
 {
   Target *target;
   alias_t alias;
-  uint32_t devid, memid;
+  uint32_t devid, memid, remote_base = 0;
   char *device;
   int i;
 
@@ -93,7 +93,7 @@ int flexsoc_cm3 (args_t *args)
   if ((devid >> 4) == 0xF1ec50c)
     log_nonl (LOG_NORMAL, "FlexSoC v%d ", devid & 0xf);
   else
-    err ("flexsoc not found!");
+    log (LOG_ERR, "FlexSoC not found!");
   
   // Get memory config
   memid = target->MemoryID ();
@@ -103,7 +103,7 @@ int flexsoc_cm3 (args_t *args)
   // Setup remote if enabled
   if (args->remote)
     if (remote_open (args->remote_div, args->remote_halt))
-      log (LOG_ERR, "Failed to connect to remote");
+      goto cleanup;
   
   // Setup plugins
   if (args->map)
@@ -127,17 +127,20 @@ int flexsoc_cm3 (args_t *args)
   // Print out remote mapping
   if (args->remote) {
 
+    // Get remote base
+    remote_base = target->RemoteBase ();
+    
     // Print out bridge info
     log (LOG_NORMAL, "Enabling remote AHB3 bridge: 0x%08X-0x%08X",
-         target->RemoteBase (), target->RemoteBase () + 0x20000000 - 1);
+         remote_base, remote_base + 0x20000000 - 1);
     log (LOG_NORMAL, "  Local         Remote       Mask");
     for (i = 0; i < 8; i++)
       log (LOG_NORMAL, "  0x%08X => 0x%08X : 0x%08X",
-           target->RemoteBase () + (i * 0x02000000),
+           remote_base + (i * 0x02000000),
            target->RemoteRemap32M (i),
            0x02000000 - 1);
     log (LOG_NORMAL, "  0x%08X => 0x%08X : 0x%08X",
-         target->RemoteBase () + 0x10000000,
+         remote_base + 0x10000000,
          target->RemoteRemap256M (),
          0x10000000 - 1);
 
@@ -154,6 +157,14 @@ int flexsoc_cm3 (args_t *args)
     log_nonl (LOG_NORMAL, "Loading %s @ 0x%08X... ", args->load[i].name, args->load[i].addr);
     data = read_bin (args->load[i].name, &size);
 
+    // If target within remote address space set low speed
+    if (target->RemoteEn () &&
+        (args->load[i].addr >= remote_base) &&
+        (args->load[i].addr < remote_base + 0x20000000))
+      flexsoc_hispeed (false);
+    else
+      flexsoc_hispeed (true);
+        
     // Write to target
     target->WriteW (args->load[i].addr, data, size/4);
 
@@ -169,6 +180,9 @@ int flexsoc_cm3 (args_t *args)
     // Free buffers
     free (verify);
     free (data);
+
+    // Change back to high speed
+    flexsoc_hispeed (true);
   }
 
   // Register handler for shutdown
@@ -176,16 +190,17 @@ int flexsoc_cm3 (args_t *args)
   
   // Release processor from reset
   if (!args->gdb) {
-    log (LOG_DEBUG, "Releasing CPURESETn");
+    log (LOG_NORMAL, "Deasserting CPURESETn...");
     target->CPUReset (false);
   }
   else
-    log (LOG_DEBUG, "Waiting for debugger...");
+    log (LOG_NORMAL, "Waiting for debugger...");
 
   // Launch TCP server for master access
   while (!shutdown_flag)
     ;
 
+ cleanup:
   // Put the CPU back into reset
   target->CPUReset (true);
 

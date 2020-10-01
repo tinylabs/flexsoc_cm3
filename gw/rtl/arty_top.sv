@@ -12,10 +12,11 @@ module arty_top
     parameter ROM_SZ               = 0,
     parameter RAM_SZ               = 0,
     parameter ROM_FILE             = "",
-    parameter REMOTE_BASE          = 0
+    parameter REMOTE_BASE          = 0,
+    parameter CORE_FREQ            = 0
     )(
       input  CLK_100M,
-      input  RESET,
+      input  RESETn,
       // Debug SWD pins
       input  TCK_SWDCLK,
       inout  TMS_SWDIO,
@@ -32,6 +33,8 @@ module arty_top
    logic     hpll_locked, hpll_feedback;
    logic     tpll_locked, tpll_feedback;
 
+`define CORE_FREQ (XILINX_ENC_CM3 == 1) ? 50_000_000 : 32_000_000
+   
    // Transport PLL
    PLLE2_BASE #(
                 .BANDWIDTH ("OPTIMIZED"),
@@ -63,9 +66,6 @@ module arty_top
    generate
       if (XILINX_ENC_CM3) begin : gen_pll
          
-         // Encrypted CM3 core can support 50MHz HCLK
-         `define CORE_FREQ 50_000_000
-         
          // Full CM3 core PLL timing
          PLLE2_BASE #(
                       .BANDWIDTH ("OPTIMIZED"),
@@ -96,9 +96,6 @@ module arty_top
       end // block: gen_pll
       else begin : gen_pll
 
-         // Obsfucated CM3 core can only support 32MHz HCLK
-         `define CORE_FREQ 32_000_000
-         
          PLLE2_BASE #(
                       .BANDWIDTH ("OPTIMIZED"),
                       .CLKFBOUT_MULT (16),
@@ -125,7 +122,6 @@ module arty_top
                                   .RST(1'b0),
                                   .CLKFBIN(hpll_feedback)    // 1-bit input, feedback clock
                                   );
-
       end
    endgenerate
    
@@ -135,7 +131,7 @@ module arty_top
    
    always @(posedge hclk)
      begin
-        if (RESET | !hpll_locked | !tpll_locked)
+        if (!RESETn | !hpll_locked | !tpll_locked)
           reset_ctr <= 'hf;
         else if (reset_ctr)
           reset_ctr <= reset_ctr - 1;
@@ -151,16 +147,16 @@ module arty_top
    logic               brg_swdoe, brg_swdout;
    logic               brg_swdin;
    IOBUF u_swdio1 (.IO (BRG_SWDIO), .I (brg_swdout), .O (brg_swdin), .T (!brg_swdoe));
-   
+
    // Instantiate SoC
    flexsoc_cm3
      #(
-       .CORE_FREQ            (`CORE_FREQ),
-       .XILINX_ENC_CM3       (XILINX_ENC_CM3),
-       .ROM_SZ               (ROM_SZ),
-       .RAM_SZ               (RAM_SZ),
-       .ROM_FILE             (ROM_FILE),
-       .REMOTE_BASE          (REMOTE_BASE)
+       .CORE_FREQ        (`CORE_FREQ),
+       .XILINX_ENC_CM3   (XILINX_ENC_CM3),
+       .ROM_SZ           (ROM_SZ),
+       .RAM_SZ           (RAM_SZ),
+       .ROM_FILE         (ROM_FILE),
+       .REMOTE_BASE      (REMOTE_BASE)
        )
    u_soc (
           .CLK           (hclk),

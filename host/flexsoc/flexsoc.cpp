@@ -16,14 +16,18 @@
 #include "Cbuf.h"
 #include "log.h"
 
-// Read transfer size
-//#define READ_SEND_SZ   (2)
-#define READ_SEND_SZ   (180)
-#define WRITE_SEND_SZ  (READ_SEND_SZ * 5)
+// Two transfer rates
+// High speed for internal BRAM/Reg
+// Low speed for external bridge (SWD/JTAG)
+#define LOW_SPEED_SEND_SZ   9
+#define HIGH_SPEED_SEND_SZ  180
+#define WRITE_RECV_BUF_SZ   ((HIGH_SPEED_SEND_SZ * 5) / 2)
+#define READ_RECV_BUF_SZ    (HIGH_SPEED_SEND_SZ * 5)
 
-// Write transfer size
-#define WRITE_RECV_SZ (WRITE_SEND_SZ / 2)
-#define READ_RECV_SZ  (READ_SEND_SZ * 5)
+static int read_send_sz;
+static int read_recv_sz;
+static int write_send_sz;
+static int write_recv_sz;
 
 // Master buf size
 #define MBUF_SZ   (16 * 1024)
@@ -202,6 +206,9 @@ int flexsoc_open (char *id)
   else
     dev = new FTDITransport ();
 
+  // Default to high speed mode
+  flexsoc_hispeed (true);
+  
   // Open transport
   rv = dev->Open (id);
   if (rv)
@@ -221,8 +228,8 @@ int flexsoc_open (char *id)
   pthread_mutex_init (&api_lock, NULL);
 
   // Malloc tbuf
-  tbuf[0] = (uint8_t *)malloc (WRITE_SEND_SZ);
-  tbuf[1] = (uint8_t *)malloc (WRITE_SEND_SZ);
+  tbuf[0] = (uint8_t *)malloc (HIGH_SPEED_SEND_SZ * 5);
+  tbuf[1] = (uint8_t *)malloc (HIGH_SPEED_SEND_SZ * 5);
   if (!tbuf[0] || (!tbuf[1]))
     err ("Failed to malloc tbuf");
 
@@ -313,7 +320,7 @@ static void buf_to_host32 (uint8_t *host, const uint8_t *buf)
 static int read_process (uint8_t width, uint8_t *data, int rcnt)
 {
   int i, read = 0;
-  uint8_t rbuf[READ_RECV_SZ];
+  uint8_t rbuf[READ_RECV_BUF_SZ];
 
   // Read results
   flexsoc_recv (rbuf, rcnt);
@@ -341,7 +348,7 @@ static int read_process (uint8_t width, uint8_t *data, int rcnt)
 static int write_process (int rcnt)
 {
   int i, written = 0;
-  uint8_t rbuf[WRITE_RECV_SZ];
+  uint8_t rbuf[WRITE_RECV_BUF_SZ];
 
   // Read results
   flexsoc_recv (rbuf, rcnt);
@@ -373,14 +380,14 @@ static int flexsoc_read (uint8_t width, uint32_t addr, uint8_t *data, int len)
   pthread_mutex_lock (&api_lock);
   
   // Set read/write size
-  dev->WriteSize (READ_SEND_SZ);
-  dev->ReadSize (READ_RECV_SZ);
+  dev->WriteSize (read_send_sz);
+  dev->ReadSize (read_recv_sz);
 
   // Read all data
   for (i = 0; i < len; i++) {
 
     // If we've hit buffer size then flush
-    if (idx == READ_SEND_SZ) {        
+    if (idx == read_send_sz) {        
       flexsoc_send (tbuf[bi], idx);
       bi = !bi; // Switch buffers
       if (!bi) // Start processing responses
@@ -443,14 +450,14 @@ static int flexsoc_write (uint8_t width, uint32_t addr, const uint8_t *data, int
   pthread_mutex_lock (&api_lock);
 
   // Set read/write size
-  dev->WriteSize (WRITE_SEND_SZ);
-  dev->ReadSize (WRITE_RECV_SZ);
+  dev->WriteSize (write_send_sz);
+  dev->ReadSize (write_recv_sz);
 
   // Loop over data to write
   for (i = 0; i < len; i++) {
 
     // If we've hit buffer size then flush
-    if (idx + 1 + width > WRITE_SEND_SZ) {
+    if (idx + 1 + width > write_send_sz) {
       flexsoc_send (tbuf[bi], idx);
       bi = !bi; // Switch buffers
       idx = 0;
@@ -575,4 +582,17 @@ int flexsoc_read_returnval (void)
 void flexsoc_write_returnval (int val)
 {
   returncode = val;
+}
+
+void flexsoc_hispeed (bool en)
+{
+  if (en)
+    read_send_sz = HIGH_SPEED_SEND_SZ;
+  else
+    read_send_sz = LOW_SPEED_SEND_SZ;
+
+  // Derive the others
+  write_send_sz = read_send_sz * 5;
+  write_recv_sz = write_send_sz / 2;
+  read_recv_sz = read_send_sz * 5;
 }
