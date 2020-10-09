@@ -106,6 +106,8 @@ private:
   uint32_t RemoteAPRead (uint8_t addr, uint8_t ap = -1);
   void RemoteAPWrite (uint8_t addr, uint32_t data, uint8_t ap = -1);
   void RemoteAHBAP (uint8_t ap);
+  void RemoteCSWFixed (bool isfixed);
+  bool RemoteCSWFixed (void);
   
   // Direct remote memory access (not dependent on bridge mapping)
   uint32_t RemoteReadW (uint32_t addr);

@@ -147,7 +147,10 @@ generate:
                 brg_irq_mask:
                     width: 32
                     type: rw
-                    count: 2                    
+                    count: 2
+                brg_csw_fixed:
+                    width: 1
+                    type: rw
                     
     soc_intercon:
         generator: ahb3lite_intercon_gen

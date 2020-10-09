@@ -82,15 +82,15 @@ int remote_open (uint8_t div, bool halt)
   // Enable remote interface
   targ->RemoteEn (true);
 
-  // Wait for interface to come up
-  usleep (1200000 / freqMHz);
-
-  // Read IDCode
-  idcode = targ->RemoteIDCODE ();
+  // Poll for valid IDCODE
+  n = timeout;
+  do {
+    idcode = targ->RemoteIDCODE ();
+  } while (--n && (idcode == 0));
   
   // Check status
   stat = targ->RemoteStat ();
-
+  
   // Check if not connected
   if (stat == ERR_NOCONNECT) {
     log (LOG_NORMAL, "-- Remote DebugPort not found! Check connections.");
@@ -111,12 +111,11 @@ int remote_open (uint8_t div, bool halt)
        (idcode >> 12) & 0xf,
        idcode, freqMHz);
 
-  // Enable debugger
+  // Enable debug and overrun detection
   log_nonl (LOG_DEBUG, "  Enable debug... ");
   targ->RemoteRegWrite (false, DP_CTLSTAT, 0x50000000); n = timeout;
   while (((targ->RemoteRegRead (false, DP_CTLSTAT) >> 28) != 0xf) && n)
     n--;
-
   if (!n) {
     log (LOG_ERR, "remote timeout.");
     goto cleanup;
@@ -180,8 +179,13 @@ int remote_open (uint8_t div, bool halt)
   if ((targ->RemoteAPRead (AP_CSW) & 3) != 0) {
     log (LOG_NORMAL, "  -- BYTE/HWRD access not supported on remote.");
     log (LOG_NORMAL, "  -- AHB bridge will not work for these accesses");
+
+    // Set value for state machine
+    targ->RemoteCSWFixed (true);
   }
-  
+  else // CSW not fixed (WORD/HWRD/BYTE) supported over remote bridge
+    targ->RemoteCSWFixed (false);
+
   // Set mem-ap for remote bridge
   targ->RemoteAHBAP (apsel);
   
@@ -208,3 +212,25 @@ void remote_close (void)
   targ->RemoteEn (false);
 }
 
+void remote_dump (uint32_t base)
+{
+  int i;
+  uint8_t reg = 0;
+  
+  // Get target pointer
+  Target *targ = Target::Ptr ();
+
+  // Dump each register
+  for (i = 0; i < 0x14; i++) {
+    
+    // Select register for read (DCRSR)
+    targ->WriteReg (base + 0xedf4, i);
+
+    // Wait for it to complete (DHCSR)
+    while (targ->ReadReg (base + 0xedf0) & (1 << 16) == 0)
+      ;
+
+    // Print reg (DCRDR)
+    log (LOG_NORMAL, "[%02X] = %08X", i, targ->ReadReg (base + 0xedf8));
+  }
+}

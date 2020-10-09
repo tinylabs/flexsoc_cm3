@@ -71,7 +71,8 @@ int main(int argc, char **argv, char **env)
 {
 	uint32_t insn = 0;
 	uint32_t ex_pc = 0;
-
+    uint8_t tdo;
+    
 	Verilated::commandArgs(argc, argv);
 
 	Vflexsoc_cm3* top = new Vflexsoc_cm3;
@@ -84,6 +85,7 @@ int main(int argc, char **argv, char **env)
     // Setup initial signals
     top->CLK = 0;
     top->TRANSPORT_CLK = 0;
+    //top->BRG_PHYCLK = 0;
     top->PORESETn = 0;
     top->UART_RX = 1; // RX should be default high
 
@@ -98,8 +100,9 @@ int main(int argc, char **argv, char **env)
       top->eval();
       top->CLK = !top->CLK;
       top->TRANSPORT_CLK = !top->TRANSPORT_CLK;
-      utils->doJTAGServer (&top->TMS_SWDIN, &top->TDI, &top->TCK_SWDCLK, top->TDO, top->SWDOUT, &top->PORESETn);
-      utils->doSWDClient (top->BRG_SWDCLK, top->BRG_SWDOUT, &top->BRG_SWDIN, top->BRG_SWDOE);
+      //top->BRG_PHYCLK = !top->BRG_PHYCLK;
+      utils->doJTAGServer (&top->TCK, top->TDO, &top->TDI, top->TMSOE ? &top->TMSOUT : &top->TMSIN, &top->PORESETn);
+      utils->doJTAGClient (top->BRG_SWDCLK, &tdo, 0, top->BRG_SWDOE ? &top->BRG_SWDOUT : &top->BRG_SWDIN, top->BRG_SWDOE);
       if (top->PORESETn)
         utils->doUARTServer (top->UART_TX, &top->UART_RX);
 	}

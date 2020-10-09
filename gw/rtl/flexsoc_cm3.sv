@@ -21,12 +21,12 @@ module flexsoc_cm3
      input  TRANSPORT_CLK,
      
      // JTAG/SWD
-     input  TCK_SWDCLK,
+     input  TCK,
      input  TDI,
-     input  TMS_SWDIN,
      output TDO,
-     output SWDOUT,
-     output SWDOUTEN,
+     input  TMSIN,
+     output TMSOUT,
+     output TMSOE,
 
      // SWD bridge
      input  BRG_SWDIN,
@@ -175,7 +175,8 @@ module flexsoc_cm3
    assign brg_irq_mask_i[1] = brg_irq_mask_o[1];
    assign brg_irq_len_i = brg_irq_len_o;
    assign brg_irq_off_i = brg_irq_off_o;
-           
+   assign brg_csw_fixed_i = brg_csw_fixed_o;
+
    // Remote bridge to target
    ahb3lite_remote_bridge
      #( .BASE_ADDR (REMOTE_BASE))
@@ -202,6 +203,7 @@ module flexsoc_cm3
              .IRQ_LEN      (brg_irq_len_o),
              .IRQ_OFF      (brg_irq_off_o),
              .IRQ          (),
+             //.CSW_FIXED    (brg_csw_fixed_o),
              
              // AHB3 slave interface
              .HSEL         (ahb3_brg_HSEL),
@@ -403,10 +405,10 @@ module flexsoc_cm3
             .INTNMI       (1'b0),
             
             // Debug
-            .SWCLKTCK     (TCK_SWDCLK),
-            .SWDITMS      (TMS_SWDIN),
-            .SWDO         (SWDOUT),
-            .SWDOEN       (SWDOUTEN),
+            .SWCLKTCK     (TCK),
+            .SWDITMS      (TMSIN),
+            .SWDO         (TMSOUT),
+            .SWDOEN       (TMSOE),
             .nTRST        (1'b1),
             .TDI          (TDI),
             .TDO          (TDO),

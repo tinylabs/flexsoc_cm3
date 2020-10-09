@@ -421,3 +421,13 @@ uint32_t Target::RemoteRemap256M (void)
 {
   return csr->brg_remap256 () << 28;
 }
+
+void Target::RemoteCSWFixed (bool isfixed)
+{
+  csr->brg_csw_fixed (isfixed);
+}
+
+bool Target::RemoteCSWFixed (void)
+{
+  return csr->brg_csw_fixed ();
+}
