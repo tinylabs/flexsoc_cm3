@@ -51,7 +51,7 @@ mark_as_advanced(VERILATOR_COVERAGE_EXECUTABLE)
 mark_as_advanced(VERILATOR_INCLUDE_DIR)
 
 find_package(PackageHandleStandardArgs REQUIRED)
-find_package_handle_standard_args(Verilator REQUIRED_VARS
+find_package_handle_standard_args(verilator REQUIRED_VARS
   VERILATOR_EXECUTABLE VERILATOR_COVERAGE_EXECUTABLE VERILATOR_INCLUDE_DIR)
 
 #if (WIN32)

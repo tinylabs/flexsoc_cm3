@@ -62,7 +62,7 @@ int FTDITransport::Open (char *id)
     err ("Failed to set interface");
   
   // Purge buffers
-  rv = ftdi_usb_purge_buffers (ftdi);
+  rv = ftdi_tcioflush (ftdi);
   if (rv)
     err ("Failed to purge FTDI buffers!");
 
@@ -107,7 +107,7 @@ void FTDITransport::Close (void)
 
 void FTDITransport::Flush (void)
 {
-  if (ftdi_usb_purge_buffers (ftdi))
+  if (ftdi_tcioflush (ftdi))
     err ("Failed to purge buffers");
 }
 
