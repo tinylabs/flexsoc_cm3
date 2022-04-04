@@ -36,6 +36,17 @@ if( NOT CMAKE_CROSSCOMPILING )
   # Make sure fusesoc is installed
   find_package( fusesoc REQUIRED )
 
+  # Cmake fusesoc bindings
+  include( fusesoc )
+
+  # Add fusesoc libraries
+  fusesoc_add_lib( fusesoc-cores https://github.com/fusesoc/fusesoc-cores )
+  fusesoc_add_lib( elf-loader https://github.com/fusesoc/elf-loader.git )
+  #fusesoc_add_lib( tinylabs-cores https://github.com/tinylabs/tinylabs-cores )
+  # Debug with local copy
+  fusesoc_add_lib( tinylabs-cores /home/elliot/projects/tinylabs-cores )
+  fusesoc_add_lib( flexsoc_cm3 ${PROJECT_SOURCE_DIR}/gw )
+  
   # Include common defs
   include_directories( common host/flexsoc host/target host/log )
 

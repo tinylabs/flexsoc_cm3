@@ -119,7 +119,7 @@ module flexsoc_cm3
        .HDATA_SIZE (32),
        .TECHNOLOGY ("GENERIC"),
        .REGISTERED_OUTPUT ("NO"),
-       .LOAD_FILE (ROM_FILE)
+       .INIT_FILE (ROM_FILE)
        ) u_rom (
                 .HCLK      (CLK),
                 .HRESETn   (PORESETn),

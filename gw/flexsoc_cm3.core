@@ -211,8 +211,12 @@ targets:
         <<: *base
         description: Synthesize flexsoc_cm3 for Digilent Arty-A35T
         default_tool: vivado
-        filesets_append: [arty_top, cm3_full_dep, arty_constraints]
-        parameters: [XILINX_ENC_CM3=1,ROM_SZ,RAM_SZ,REMOTE_BASE]
+        # Uncomment to compile obsfucated RTL version
+        filesets_append: [arty_top, arty_constraints]
+        parameters: [XILINX_ENC_CM3=0,ROM_SZ,RAM_SZ,REMOTE_BASE]
+        # Uncomment to compile full encrypted version
+        #filesets_append: [arty_top, cm3_full_dep, arty_constraints]
+        #parameters: [XILINX_ENC_CM3=1,ROM_SZ,RAM_SZ,REMOTE_BASE]
         toplevel: [arty_top]
         tools:
             vivado:
