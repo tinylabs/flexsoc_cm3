@@ -47,6 +47,16 @@ filesets:
             - arty/pins.xdc   : {file_type : xdc}
             - vivado/vivado.tcl : {file_type : tclSource}
 
+    cmod_top:
+        files:
+            - rtl/cmod_a7_top.sv : {file_type : verilogSource}
+
+    cmod_constraints:
+        files:
+            - cmod-a7/clocks.xdc : {file_type : xdc}
+            - cmod-a7/pins.xdc   : {file_type : xdc}
+            - vivado/vivado.tcl : {file_type : tclSource}
+
 generate:
     flexsoc_csr:
         generator: ahb3lite_csr_gen
@@ -221,6 +231,22 @@ targets:
         tools:
             vivado:
                 part: xc7a35ticsg324-1L
+                #vivado-settings: /opt/xilinx/Vivado/2020.1/settings64.sh
+
+    cmod_a7:
+        <<: *base
+        description: Synthesize flexsoc_cm3 for Digilent CMOD-A35T
+        default_tool: vivado
+        # Uncomment to compile obsfucated RTL version
+        filesets_append: [cmod_top, cmod_constraints]
+        parameters: [XILINX_ENC_CM3=0,ROM_SZ,RAM_SZ,REMOTE_BASE]
+        # Uncomment to compile full encrypted version
+        #filesets_append: [cmod_top, cm3_full_dep, cmod_constraints]
+        #parameters: [XILINX_ENC_CM3=1,ROM_SZ,RAM_SZ,REMOTE_BASE]
+        toplevel: [cmod_a7_top]
+        tools:
+            vivado:
+                part: xc7a35tcpg236-1
                 #vivado-settings: /opt/xilinx/Vivado/2020.1/settings64.sh
 
 parameters:

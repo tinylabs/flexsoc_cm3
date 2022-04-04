@@ -23,12 +23,18 @@ enable_language( C CXX ASM )
 if( CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT )
   set( CMAKE_INSTALL_PREFIX /opt/flexsoc-cm3 CACHE PATH "" FORCE )
 endif()
-message( "INSTALL=${CMAKE_INSTALL_PREFIX}" )
+message( STATUS "Install: ${CMAKE_INSTALL_PREFIX}" )
 
 # Include custom functions
 include( Custom )
 
 if( NOT CMAKE_CROSSCOMPILING )
+
+  if( DEFINED ENV{XILINX_VIVADO} )
+    message( STATUS "Found Vivado: $ENV{XILINX_VIVADO}" )
+  else ()
+    message( STATUS "Vivado not found! Run `source /path/to/vivado/settings64.sh` to synthesize" )
+  endif ()
 
   # Make sure verilator is installed
   find_package( verilator REQUIRED )

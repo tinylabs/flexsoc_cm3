@@ -3,3 +3,4 @@
 #
 
 gw_target( arty )
+gw_target( cmod_a7 )
