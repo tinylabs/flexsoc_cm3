@@ -19,7 +19,7 @@
 #include <argp.h>
 #include <verilator_utils.h>
 
-#include "Vflexsoc_cm3.h"
+#include "Vflexsoc_cm3__Syms.h"
 
 static bool done;
 
@@ -77,8 +77,8 @@ int main(int argc, char **argv, char **env)
 
 	Vflexsoc_cm3* top = new Vflexsoc_cm3;
 	VerilatorUtils* utils =
-      new VerilatorUtils(top->flexsoc_cm3__DOT__u_rom__DOT__ram_inst__DOT__genblk4__DOT__ram_inst__DOT__mem_array);
-    
+      new VerilatorUtils((uint32_t *)&top->flexsoc_cm3->u_rom->ram_inst->genblk1__DOT__ram_inst->mem_array);
+  
 	parse_args(argc, argv, utils);
 	signal(SIGINT, INThandler);
 

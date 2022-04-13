@@ -2,14 +2,14 @@
 # Custom cmake functions to support this project
 #
 
-macro( gw_target NAME )
+macro( fusesoc_gw NAME )
   add_custom_target( ${NAME}
     COMMENT "Generating gateware for ${NAME}..."
     COMMAND ${FUSESOC_EXECUTABLE} --config ${PROJECT_BINARY_DIR}/fusesoc.conf run --target=${NAME} flexsoc_cm3
     )
-endmacro( gw_target )
+endmacro( fusesoc_gw )
 
-function( gen_csr TARGET GW_TOP )
+function( fusesoc_gencsr TARGET GW_TOP )
   add_custom_command(
     COMMENT "Generating CSR definitions"
     COMMAND ${FUSESOC_EXECUTABLE} --config ${PROJECT_BINARY_DIR}/fusesoc.conf run --target=lint ${GW_TOP}
@@ -24,7 +24,7 @@ function( gen_csr TARGET GW_TOP )
   add_dependencies( ${TARGET} gen_csr )
   include_directories( ${PROJECT_BINARY_DIR}/generated )
   set_property( DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${PROJECT_BINARY_DIR}/csr_generated.txt )
-endfunction( gen_csr )
+endfunction( fusesoc_gencsr )
 
 # Add fusesoc lib
 function( fusesoc_add_lib NAME REPO )
@@ -87,4 +87,3 @@ function( cli_test NAME SYSMAP BINARY EXT )
     COMMAND ${PROJECT_SOURCE_DIR}/test/scripts/cli_test.sh ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR}/test/map/${SYSMAP} ${PROJECT_SOURCE_DIR}/test/arm/bin/${BINARY} ${FLEXSOC_HW} ${EXT} ${VERILATOR_SIM}
     )
 endfunction( cli_test )
-

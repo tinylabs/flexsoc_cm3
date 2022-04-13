@@ -23,6 +23,9 @@ set_property IS_ENABLED 0 [get_drc_checks {DRC DPIP-1}]
 set_property IS_ENABLED 0 [get_drc_checks {DRC DPOP-1}]
 set_property IS_ENABLED 0 [get_drc_checks {DRC DPOP-2}]
 
+# Allow unconnected ports
+set_property SEVERITY {Warning} [get_drc_checks UCIO-1]
+
 # Make sure top constraint is run first
 reorder_files -fileset constrs_1 -front [get_files clocks.xdc]
 

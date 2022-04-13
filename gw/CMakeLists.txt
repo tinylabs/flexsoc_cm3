@@ -2,5 +2,5 @@
 # Fusesoc wrapper for HDL targets
 #
 
-gw_target( arty )
-gw_target( cmod_a7 )
+fusesoc_gw( arty )
+fusesoc_gw( cmod_a7 )
